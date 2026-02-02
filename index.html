@@ -4,8 +4,9 @@
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
         body { margin: 0; background: #001f3f; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: 'Courier New', Courier, monospace; }
-        #ui-layer { position: absolute; top: 10px; width: 800px; display: flex; justify-content: space-between; color: white; pointer-events: none; z-index: 10; font-weight: bold; font-size: 20px; text-shadow: 2px 2px 4px #000; }
+        #ui-layer { position: absolute; top: 10px; width: 800px; display: flex; justify-content: space-between; color: white; pointer-events: none; z-index: 10; font-weight: bold; font-size: 20px; text-shadow: 2px 2px 4px #000; padding: 0 20px; }
         canvas { border: 5px solid #fff; border-radius: 15px; }
+        #secret-msg { position: absolute; bottom: 50px; color: #ffd700; font-size: 24px; display: none; text-shadow: 2px 2px 4px #000; }
     </style>
 </head>
 <body>
@@ -13,6 +14,7 @@
         <div id="timer">Time: 30</div>
         <div id="score">Cleaned: 0%</div>
     </div>
+    <div id="secret-msg">✨ SECRET PATH DISCOVERED! ✨</div>
 <script>
     const config = {
         type: Phaser.AUTO,
@@ -22,14 +24,17 @@
     };
 
     const game = new Phaser.Game(config);
-    let beaver, rt, brush, pondMask;
-    let scoreText, timerText;
+    let beaver, rt, pondMask, secretPath;
+    let scoreText, timerText, secretMsg;
     let timeLeft = 30;
     let totalCleaned = 0;
+    let pathAccuracy = 0;
 
     function preload() {
-        this.load.image('pond', 'pond.jpg?v=3'); 
-        this.load.image('beaver', 'beaver.png?v=3');
+        this.load.image('pond', 'pond.jpg?v=4'); 
+        this.load.image('beaver', 'beaver.png?v=4');
+        
+        // Creating the brush
         let graphics = this.make.graphics({ x: 0, y: 0, add: false });
         graphics.fillStyle(0xffffff, 1);
         graphics.fillCircle(35, 35, 35);
@@ -40,23 +45,24 @@
         this.add.image(400, 400, 'pond').setDisplaySize(800, 800);
         
         rt = this.make.renderTexture({ width: 800, height: 800 }, false);
-        rt.fill(0xcceeff, 0.7);
+        rt.fill(0xcceeff, 0.8);
         rt.setOrigin(0, 0);
 
-        // Define the pond area for masking and boundaries
         pondMask = new Phaser.Geom.Ellipse(400, 600, 600, 350);
-        
         let shape = this.make.graphics();
         shape.fillStyle(0xffffff);
         shape.fillEllipse(pondMask.x, pondMask.y, pondMask.width, pondMask.height);
         rt.setMask(shape.createGeometryMask());
 
+        // CREATE SECRET PATH: A simple oval path hidden on the ice
+        secretPath = new Phaser.Curves.Ellipse(400, 600, 250, 150);
+
         beaver = this.add.sprite(400, 600, 'beaver').setScale(0.2);
         
         scoreText = document.getElementById('score');
         timerText = document.getElementById('timer');
+        secretMsg = document.getElementById('secret-msg');
 
-        // Timer Loop
         this.time.addEvent({
             delay: 1000,
             callback: () => {
@@ -64,7 +70,8 @@
                     timeLeft--;
                     timerText.innerText = `Time: ${timeLeft}`;
                 } else {
-                    alert(`Game Over! You cleaned ${totalCleaned}% of the pond!`);
+                    let finalMsg = pathAccuracy > 50 ? "PRO BUFFER UNLOCKED!" : "Good effort!";
+                    alert(`Finished! ${totalCleaned}% cleaned. ${finalMsg}`);
                     location.reload();
                 }
             },
@@ -76,15 +83,28 @@
     function update() {
         let pointer = this.input.activePointer;
         if (pointer.isDown) {
-            // Only move if the pointer is inside the pond boundary
             if (pondMask.contains(pointer.x, pointer.y)) {
                 beaver.x = Phaser.Math.Linear(beaver.x, pointer.x, 0.15);
                 beaver.y = Phaser.Math.Linear(beaver.y, pointer.y, 0.15);
                 rt.erase('brush', beaver.x, beaver.y + 25);
                 
-                // Simplified scoring: Increment based on movement
+                // CHECK SECRET PATH ACCURACY
+                let closestPoint = secretPath.getPointAt(secretPath.getTFromDistance(0)); 
+                // We check if the beaver is near any point on the secret curve
+                let distance = Phaser.Math.Distance.Between(beaver.x, beaver.y, 400, 600);
+                
+                // If beaver is in the 'Sweet Spot' (the hidden ring)
+                if (distance > 240 && distance < 260) {
+                    pathAccuracy++;
+                    secretMsg.style.display = 'block';
+                    beaver.setTint(0xffd700); // Turn beaver gold while on path
+                } else {
+                    secretMsg.style.display = 'none';
+                    beaver.clearTint();
+                }
+
                 if (totalCleaned < 100) {
-                    totalCleaned += 0.1;
+                    totalCleaned += 0.15;
                     scoreText.innerText = `Cleaned: ${Math.floor(totalCleaned)}%`;
                 }
             }
