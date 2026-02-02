@@ -169,4 +169,47 @@
         if (timeLeft <= 0) showEndScreen();
 
         let pointer = this.input.activePointer;
-        if (pointer.isDown && currentMask.contains(
+        if (pointer.isDown && currentMask.contains(pointer.x, pointer.y)) {
+            // Smooth movement
+            beaver.x = Phaser.Math.Linear(beaver.x, pointer.x, 0.4);
+            beaver.y = Phaser.Math.Linear(beaver.y, pointer.y, 0.4);
+            
+            // Audio & Haptic
+            if (time % 5 > 4 && window.navigator.vibrate) window.navigator.vibrate(5);
+            if (this.soundContext.state === 'suspended') this.soundContext.resume();
+            crunchSound.connect(this.soundContext.destination);
+
+            let bType = (currentLevel === 1) ? 'brush' : 'cart-brush';
+            rt.erase(bType, beaver.x, beaver.y + (currentLevel === 1 ? 20 : 40));
+            
+            if (totalCleaned < 100) {
+                totalCleaned += (currentLevel === 1) ? 0.22 : 0.48;
+                document.getElementById('score').innerText = `${Math.floor(totalCleaned)}%`;
+            }
+
+            // Treenis Ad Trigger
+            if (currentLevel === 2 && beaver.y < 340) {
+                document.getElementById('ad-popup').style.display = 'block';
+            } else {
+                document.getElementById('ad-popup').style.display = 'none';
+            }
+        } else {
+            if (crunchSound) crunchSound.disconnect();
+        }
+
+        // Goose AI (Level 2 Only)
+        if (currentLevel === 2) {
+            goose.x = 400 + Math.cos(time / 500) * 260;
+            goose.y = 475 + Math.sin(time / 900) * 140;
+            
+            if (Phaser.Geom.Intersects.RectangleToRectangle(beaver.getBounds(), goose.getBounds())) {
+                timeLeft -= 0.08; 
+                beaver.setTint(0xff0000);
+            } else {
+                beaver.clearTint();
+            }
+        }
+    }
+</script>
+</body>
+</html>
