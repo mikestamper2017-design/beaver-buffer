@@ -13,8 +13,8 @@
         .instruction-text { font-size: 18px; line-height: 1.4; margin: 20px 0; max-width: 500px; color: #e0e0e0; font-family: 'Arial', sans-serif; }
         .warning-text { color: #ff4d4d; font-weight: bold; font-size: 22px; text-transform: uppercase; margin-top: 10px; }
         button { padding: 15px 40px; font-size: 24px; font-weight: bold; cursor: pointer; border-radius: 50px; border: none; background: #ffd700; color: #001f3f; transition: transform 0.2s; box-shadow: 0 4px 0 #b89b00; }
-        button:active { transform: translateY(4px); box-shadow: none; }
         #ad-popup { position: absolute; top: 100px; background: #fff; color: #d32f2f; padding: 8px 15px; border-radius: 5px; font-weight: bold; display: none; z-index: 20; border: 2px solid #000; font-size: 14px; }
+        #reward-screen { position: absolute; width: 80%; max-width: 450px; background: #fff; border: 10px solid #ffd700; padding: 20px; z-index: 200; display: none; text-align: center; border-radius: 20px; color: #000; box-shadow: 0 0 50px rgba(0,0,0,0.5); }
     </style>
 </head>
 <body>
@@ -31,14 +31,17 @@
         <button onclick="startGame()">BEGIN NOW, EH?</button>
     </div>
 
-    <div id="level2-intro" class="overlay" style="display:none;">
-        <h2 style="color: #ffd700; font-size: 40px;">PROMOTED!</h2>
-        <div class="instruction-text">
-            <p>You're at the Community Rink now. You've got the flooding cart, so she'll clear much wider.</p>
-            <p class="warning-text">⚠️ WATCH OUT FOR THE COBRA TURKEY ⚠️</p>
-            <p>The Goose is grumpy. If he nips at ya, it'll drain your time!</p>
-        </div>
-        <button onclick="startLevel2()">GIVE 'ER!</button>
+    <div id="level-intro" class="overlay" style="display:none;">
+        <h2 id="intro-title" style="color: #ffd700; font-size: 40px;">PROMOTED!</h2>
+        <div id="intro-body" class="instruction-text"></div>
+        <button id="intro-btn" onclick="proceedToLevel()">GIVE 'ER!</button>
+    </div>
+
+    <div id="reward-screen">
+        <img src="reward.png" style="width: 100%; border-radius: 10px;">
+        <h2 style="margin: 10px 0;">🇨🇦 SECRET REWARD! 🇨🇦</h2>
+        <p>You flooded the perfect path, legend! Enjoy the Poutine & Smarties feast.</p>
+        <button onclick="closeReward()">SWEET!</button>
     </div>
 
     <div id="ui-layer">
@@ -46,40 +49,27 @@
         <div style="text-align: right;"><span class="stat-label">Ice Polished</span><span id="score">0%</span></div>
     </div>
 
-    <div id="end-screen" class="overlay" style="display:none;">
-        <h2 id="rank-title" style="font-size: 45px;"></h2>
-        <p id="rank-msg" style="font-size: 20px; margin-bottom: 30px;"></p>
-        <button id="next-btn" onclick="nextLevel()" style="display:none;">NEXT LEVEL</button>
-        <button id="retry-btn" onclick="location.reload()" style="display:none; background:#fff;">TRY AGAIN</button>
-    </div>
-
 <script>
     const config = {
         type: Phaser.AUTO,
         width: 800, height: 800,
-        parent: 'game-container',
         scene: { preload: preload, create: create, update: update }
     };
 
     const game = new Phaser.Game(config);
-    let beaver, rt, currentMask, goose, adPopup, crunchSound;
+    let beaver, rt, currentMask, goose, crunchSound, soundContext;
     let timeLeft = 30, totalCleaned = 0, gameStarted = false, currentLevel = 1;
+    let pathHistory = [];
 
     function preload() {
         this.load.image('pond', 'pond.jpg');
         this.load.image('rink', 'rink.jpg');
+        this.load.image('arena', 'arena.jpg');
         this.load.image('beaver', 'beaver.png');
         this.load.image('beaver-cart', 'beaver-cart.png');
+        this.load.image('beaver-pro', 'beaver-pro.png');
         this.load.image('goose', 'goose.png');
-        
-        // Brushes
-        let graphics = this.make.graphics({ x: 0, y: 0, add: false });
-        graphics.fillStyle(0xffffff, 1);
-        graphics.fillCircle(40, 40, 40);
-        graphics.generateTexture('brush', 80, 80);
-        graphics.clear();
-        graphics.fillRect(0, 0, 160, 55); 
-        graphics.generateTexture('cart-brush', 160, 55);
+        this.load.image('reward', 'reward.png');
     }
 
     function create() {
@@ -87,128 +77,119 @@
         rt = this.make.renderTexture({ width: 800, height: 800 }, false);
         rt.fill(0xcceeff, 0.9);
         
-        // Level 1 Ellipse Mask
         currentMask = new Phaser.Geom.Ellipse(400, 600, 650, 380);
-        let mShape = this.make.graphics().fillStyle(0xffffff).fillEllipse(400, 600, 650, 380);
-        rt.setMask(mShape.createGeometryMask());
-
         beaver = this.add.sprite(400, 600, 'beaver').setScale(0.25);
         goose = this.add.sprite(-200, -200, 'goose').setScale(0.22);
         
-        // Audio setup (Brown noise crunch)
-        let ctx = new (window.AudioContext || window.webkitAudioContext)();
+        // Haptic/Audio Engine
+        soundContext = new (window.AudioContext || window.webkitAudioContext)();
         let bufferSize = 4096;
-        crunchSound = ctx.createScriptProcessor(bufferSize, 1, 1);
+        crunchSound = soundContext.createScriptProcessor(bufferSize, 1, 1);
         crunchSound.onaudioprocess = function(e) {
             let output = e.outputBuffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) {
-                output[i] = (Math.random() * 2 - 1) * 0.05; // Low volume crunch
-            }
+            for (let i = 0; i < bufferSize; i++) output[i] = (Math.random() * 2 - 1) * 0.03;
         };
-        this.soundContext = ctx;
     }
 
     function startGame() {
         document.getElementById('start-screen').style.display = 'none';
+        if (soundContext.state === 'suspended') soundContext.resume();
         gameStarted = true;
-    }
-
-    function nextLevel() {
-        document.getElementById('end-screen').style.display = 'none';
-        document.getElementById('level2-intro').style.display = 'flex';
-        gameStarted = false;
-    }
-
-    function startLevel2() {
-        document.getElementById('level2-intro').style.display = 'none';
-        currentLevel = 2;
-        timeLeft = 25; 
-        totalCleaned = 0;
-        document.getElementById('score').innerText = '0%';
-        
-        game.scene.scenes[0].bg.setTexture('rink');
-        beaver.setTexture('beaver-cart').setScale(0.32);
-        
-        // Rectangle Mask for Rink
-        currentMask = new Phaser.Geom.Rectangle(100, 250, 600, 450);
-        rt.fill(0xcceeff, 0.9);
-        
-        goose.setPosition(400, 400);
-        gameStarted = true;
-    }
-
-    function showEndScreen() {
-        gameStarted = false;
-        const screen = document.getElementById('end-screen');
-        const title = document.getElementById('rank-title');
-        const msg = document.getElementById('rank-msg');
-        let score = Math.floor(totalCleaned);
-        
-        screen.style.display = 'flex';
-        if (score >= 85 && currentLevel === 1) {
-            title.innerText = "BEAUTY, EH?";
-            msg.innerText = "You cleared the pond! The Community Rink needs you.";
-            document.getElementById('next-btn').style.display = 'block';
-        } else if (score >= 95 && currentLevel === 2) {
-            title.innerText = "ICE LEGEND!";
-            msg.innerText = "The Treenis is polished to perfection. You're a pro!";
-            document.getElementById('retry-btn').innerText = "PLAY AGAIN";
-            document.getElementById('retry-btn').style.display = 'block';
-        } else {
-            title.innerText = "OUT FOR A STROLL?";
-            msg.innerText = score + "% cleaned isn't gonna cut it. Give 'er another go!";
-            document.getElementById('retry-btn').style.display = 'block';
-        }
     }
 
     function update(time, delta) {
         if (!gameStarted) return;
-
         timeLeft -= delta / 1000;
         document.getElementById('timer').innerText = Math.max(0, Math.ceil(timeLeft));
-        if (timeLeft <= 0) showEndScreen();
 
         let pointer = this.input.activePointer;
         if (pointer.isDown && currentMask.contains(pointer.x, pointer.y)) {
-            // Smooth movement
-            beaver.x = Phaser.Math.Linear(beaver.x, pointer.x, 0.4);
-            beaver.y = Phaser.Math.Linear(beaver.y, pointer.y, 0.4);
+            beaver.x = Phaser.Math.Linear(beaver.x, pointer.x, 0.2);
+            beaver.y = Phaser.Math.Linear(beaver.y, pointer.y, 0.2);
             
-            // Audio & Haptic
-            if (time % 5 > 4 && window.navigator.vibrate) window.navigator.vibrate(5);
-            if (this.soundContext.state === 'suspended') this.soundContext.resume();
-            crunchSound.connect(this.soundContext.destination);
+            // Haptics & Crunchy Sound
+            if (time % 10 > 8 && window.navigator.vibrate) window.navigator.vibrate(5);
+            crunchSound.connect(soundContext.destination);
 
-            let bType = (currentLevel === 1) ? 'brush' : 'cart-brush';
-            rt.erase(bType, beaver.x, beaver.y + (currentLevel === 1 ? 20 : 40));
-            
-            if (totalCleaned < 100) {
-                totalCleaned += (currentLevel === 1) ? 0.22 : 0.48;
-                document.getElementById('score').innerText = `${Math.floor(totalCleaned)}%`;
-            }
+            rt.erase('beaver', beaver.x, beaver.y);
+            totalCleaned += (currentLevel === 3) ? 0.4 : 0.25;
+            document.getElementById('score').innerText = `${Math.min(100, Math.floor(totalCleaned))}%`;
 
-            // Treenis Ad Trigger
-            if (currentLevel === 2 && beaver.y < 340) {
-                document.getElementById('ad-popup').style.display = 'block';
-            } else {
-                document.getElementById('ad-popup').style.display = 'none';
+            // Ad Popup for Level 2
+            if (currentLevel === 2 && beaver.y < 350) document.getElementById('ad-popup').style.display = 'block';
+            else document.getElementById('ad-popup').style.display = 'none';
+
+            // Hidden Best Path Tracking (Level 3)
+            if (currentLevel === 3) {
+                pathHistory.push({x: beaver.x, y: beaver.y});
+                if(pathHistory.length > 500) checkSecretReward();
             }
         } else {
             if (crunchSound) crunchSound.disconnect();
         }
 
-        // Goose AI (Level 2 Only)
-        if (currentLevel === 2) {
-            goose.x = 400 + Math.cos(time / 500) * 260;
-            goose.y = 475 + Math.sin(time / 900) * 140;
-            
-            if (Phaser.Geom.Intersects.RectangleToRectangle(beaver.getBounds(), goose.getBounds())) {
-                timeLeft -= 0.08; 
-                beaver.setTint(0xff0000);
-            } else {
-                beaver.clearTint();
-            }
+        if (timeLeft <= 0) handleEndLevel();
+    }
+
+    function handleEndLevel() {
+        gameStarted = false;
+        if (totalCleaned < 85) {
+            alert("Clear more ice, bud! Give 'er another go.");
+            location.reload();
+            return;
         }
+
+        const intro = document.getElementById('level-intro');
+        const body = document.getElementById('intro-body');
+        intro.style.display = 'flex';
+
+        if (currentLevel === 1) {
+            body.innerHTML = `<p>You're at the Community Rink now. You've got the flooding cart, so she'll clear much wider.</p>
+                              <p class="warning-text">⚠️ WATCH OUT FOR THE COBRA TURKEY ⚠️</p>
+                              <p>The Goose is grumpy. If he nips at ya, it'll drain your time!</p>`;
+        } else if (currentLevel === 2) {
+            body.innerHTML = `<p>Welcome to the Big Leagues! You're driving the Vintage Lawnmower Flooder now.</p>
+                              <p>The ice is huge, the crowd is wild, and the "Best Path" bonus is up for grabs!</p>`;
+        } else {
+            alert("YOU ARE THE ICE MASTER! SAATCHI MATERIAL, EH?");
+            location.reload();
+        }
+    }
+
+    function proceedToLevel() {
+        document.getElementById('level-intro').style.display = 'none';
+        currentLevel++;
+        timeLeft = (currentLevel === 3) ? 45 : 30;
+        totalCleaned = 0;
+        rt.fill(0xcceeff, 0.9);
+        pathHistory = [];
+        
+        if (currentLevel === 2) {
+            game.scene.scenes[0].bg.setTexture('rink');
+            beaver.setTexture('beaver-cart').setScale(0.3);
+            currentMask = new Phaser.Geom.Rectangle(100, 250, 600, 450);
+            goose.setPosition(400, 400);
+        } else if (currentLevel === 3) {
+            game.scene.scenes[0].bg.setTexture('arena');
+            beaver.setTexture('beaver-pro').setScale(0.4);
+            currentMask = new Phaser.Geom.Rectangle(50, 200, 700, 500);
+            goose.setPosition(-200, -200);
+        }
+        gameStarted = true;
+    }
+
+    function checkSecretReward() {
+        const hasTL = pathHistory.some(p => p.x < 150 && p.y < 300);
+        const hasBR = pathHistory.some(p => p.x > 650 && p.y > 600);
+        if (hasTL && hasBR && totalCleaned > 95) {
+            document.getElementById('reward-screen').style.display = 'block';
+            gameStarted = false;
+        }
+    }
+
+    function closeReward() {
+        document.getElementById('reward-screen').style.display = 'none';
+        gameStarted = true;
     }
 </script>
 </body>
