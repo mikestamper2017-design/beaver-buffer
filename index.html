@@ -3,11 +3,16 @@
 <head>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
-        body { margin: 0; background: #001f3f; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        body { margin: 0; background: #001f3f; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: 'Courier New', Courier, monospace; }
+        #ui-layer { position: absolute; top: 10px; width: 800px; display: flex; justify-content: space-between; color: white; pointer-events: none; z-index: 10; font-weight: bold; font-size: 20px; text-shadow: 2px 2px 4px #000; }
         canvas { border: 5px solid #fff; border-radius: 15px; }
     </style>
 </head>
 <body>
+    <div id="ui-layer">
+        <div id="timer">Time: 30</div>
+        <div id="score">Cleaned: 0%</div>
+    </div>
 <script>
     const config = {
         type: Phaser.AUTO,
@@ -17,47 +22,72 @@
     };
 
     const game = new Phaser.Game(config);
-    let beaver, rt, brush;
+    let beaver, rt, brush, pondMask;
+    let scoreText, timerText;
+    let timeLeft = 30;
+    let totalCleaned = 0;
 
     function preload() {
-        // The '?v=2' tricks your phone into loading the new version
-        this.load.image('pond', 'pond.jpg?v=2'); 
-        this.load.image('beaver', 'beaver.png?v=2');
-        
+        this.load.image('pond', 'pond.jpg?v=3'); 
+        this.load.image('beaver', 'beaver.png?v=3');
         let graphics = this.make.graphics({ x: 0, y: 0, add: false });
         graphics.fillStyle(0xffffff, 1);
-        graphics.fillCircle(30, 30, 30); // Rounder brush for smoother cleaning
-        graphics.generateTexture('brush', 60, 60);
+        graphics.fillCircle(35, 35, 35);
+        graphics.generateTexture('brush', 70, 70);
     }
 
     function create() {
         this.add.image(400, 400, 'pond').setDisplaySize(800, 800);
         
         rt = this.make.renderTexture({ width: 800, height: 800 }, false);
-        rt.fill(0xcceeff, 0.6); // Light blue tint so we can see the ice
+        rt.fill(0xcceeff, 0.7);
         rt.setOrigin(0, 0);
 
-        // ADJUSTED MASK: Based on your screenshot, the pond is centered
+        // Define the pond area for masking and boundaries
+        pondMask = new Phaser.Geom.Ellipse(400, 600, 600, 350);
+        
         let shape = this.make.graphics();
         shape.fillStyle(0xffffff);
-        shape.fillEllipse(400, 600, 600, 350); // Centered on the lower half pond
-        let mask = shape.createGeometryMask();
-        rt.setMask(mask);
+        shape.fillEllipse(pondMask.x, pondMask.y, pondMask.width, pondMask.height);
+        rt.setMask(shape.createGeometryMask());
 
-        beaver = this.add.sprite(400, 400, 'beaver');
-        beaver.setScale(0.25); 
+        beaver = this.add.sprite(400, 600, 'beaver').setScale(0.2);
         
-        brush = this.make.image({ key: 'brush' }, false);
+        scoreText = document.getElementById('score');
+        timerText = document.getElementById('timer');
+
+        // Timer Loop
+        this.time.addEvent({
+            delay: 1000,
+            callback: () => {
+                if (timeLeft > 0) {
+                    timeLeft--;
+                    timerText.innerText = `Time: ${timeLeft}`;
+                } else {
+                    alert(`Game Over! You cleaned ${totalCleaned}% of the pond!`);
+                    location.reload();
+                }
+            },
+            callbackScope: this,
+            loop: true
+        });
     }
 
     function update() {
         let pointer = this.input.activePointer;
         if (pointer.isDown) {
-            beaver.x = Phaser.Math.Linear(beaver.x, pointer.x, 0.15);
-            beaver.y = Phaser.Math.Linear(beaver.y, pointer.y, 0.15);
-
-            // This is the cleaning action
-            rt.erase('brush', beaver.x, beaver.y + 30);
+            // Only move if the pointer is inside the pond boundary
+            if (pondMask.contains(pointer.x, pointer.y)) {
+                beaver.x = Phaser.Math.Linear(beaver.x, pointer.x, 0.15);
+                beaver.y = Phaser.Math.Linear(beaver.y, pointer.y, 0.15);
+                rt.erase('brush', beaver.x, beaver.y + 25);
+                
+                // Simplified scoring: Increment based on movement
+                if (totalCleaned < 100) {
+                    totalCleaned += 0.1;
+                    scoreText.innerText = `Cleaned: ${Math.floor(totalCleaned)}%`;
+                }
+            }
         }
     }
 </script>
