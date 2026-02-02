@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
+    <style>
+        body { margin: 0; background: #2c3e50; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        canvas { border: 4px solid #ecf0f1; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+    </style>
+</head>
+<body>
+<script>
+    const config = {
+        type: Phaser.AUTO,
+        width: 800,
+        height: 600,
+        backgroundColor: '#ffffff',
+        parent: 'game-container',
+        scene: { preload: preload, create: create, update: update }
+    };
+
+    const game = new Phaser.Game(config);
+    let beaver;
+    let rt; // Render Texture for the "buffing" effect
+
+    function preload() {
+        // We will replace these with your AI-generated art soon!
+        this.load.image('pond', 'https://labs.phaser.io/assets/skies/big-ice.png'); 
+        this.load.image('brush', 'https://labs.phaser.io/assets/sprites/brush.png');
+    }
+
+    function create() {
+        // 1. The "Clean Ice" Painting (The Reveal)
+        let background = this.add.image(400, 300, 'pond');
+        
+        // 2. The "Scratched Ice" Mask (The layer to be cleared)
+        // We create a Render Texture that covers the whole screen
+        rt = this.make.renderTexture({ width: 800, height: 600 }, true);
+        rt.fill(0xdddddd, 0.9); // Light grey "scratched" look
+        rt.setOrigin(0, 0);
+
+        // 3. The Beaver (Placeholder)
+        beaver = this.add.rectangle(400, 300, 60, 40, 0x8B4513);
+        this.add.text(10, 10, 'BEAVER BUFFER: Level 1 - The Rake', { font: '20px Arial', fill: '#000' });
+    }
+
+    function update() {
+        let pointer = this.input.activePointer;
+
+        if (pointer.isDown) {
+            // Move beaver toward touch/mouse
+            beaver.x = pointer.x;
+            beaver.y = pointer.y;
+
+            // "Buffer" the ice by erasing the render texture
+            // This 'erases' the grey to show the pond underneath
+            rt.erase('brush', pointer.x, pointer.y);
+        }
+    }
+</script>
+</body>
+</html>
