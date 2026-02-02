@@ -3,80 +3,68 @@
 <head>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
-        body { margin: 0; background: #001f3f; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: sans-serif; }
-        canvas { border: 5px solid #fff; border-radius: 15px; box-shadow: 0 0 30px rgba(0,0,0,0.8); }
-        #ui { position: absolute; top: 20px; color: white; text-shadow: 2px 2px 4px #000; pointer-events: none; text-align: center; width: 100%; }
+        body { margin: 0; background: #001f3f; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        canvas { border: 5px solid #fff; border-radius: 15px; }
     </style>
 </head>
 <body>
-    <div id="ui">
-        <h1>BEAVER BUFFER</h1>
-        <p>Level 1: The Backyard Rink Rake</p>
-        <div id="coverage">Coverage: 0%</div>
-    </div>
 <script>
     const config = {
         type: Phaser.AUTO,
         width: 800,
         height: 800,
-        backgroundColor: '#ffffff',
         scene: { preload: preload, create: create, update: update }
     };
 
     const game = new Phaser.Game(config);
-    let beaver;
-    let rt; 
-    let coverageText;
-    let isBuffing = false;
+    let beaver, rt, brush;
 
     function preload() {
-        // These must match the filenames you uploaded to GitHub!
         this.load.image('pond', 'pond.jpg'); 
         this.load.image('beaver', 'beaver.png');
         
-        // We create a "brush" procedurally so you don't need a separate file
+        // Custom rake-shaped brush
         let graphics = this.make.graphics({ x: 0, y: 0, add: false });
         graphics.fillStyle(0xffffff, 1);
-        graphics.fillCircle(40, 40, 40);
-        graphics.generateTexture('brush', 80, 80);
+        graphics.fillRect(0, 0, 80, 20); // A horizontal rake shape
+        graphics.generateTexture('brush', 80, 20);
     }
 
     function create() {
-        // 1. The Revealed Art (Pond)
-        let pond = this.add.image(400, 400, 'pond');
-        pond.setDisplaySize(800, 800);
+        // 1. Bottom Layer: The Beautiful Pond Art
+        let pond = this.add.image(400, 400, 'pond').setDisplaySize(800, 800);
         
-        // 2. The "Rough Ice" Layer (Render Texture)
-        rt = this.make.renderTexture({ width: 800, height: 800 }, true);
-        rt.fill(0xe0f7fa, 1); // A cold, icy blue-white
-        
-        // Add some "scratches" to the ice for texture
-        for(let i=0; i<50; i++) {
-            rt.drawFrame('brush', Math.random()*800, Math.random()*800, 0.1);
-        }
+        // 2. The "Rough Ice" Layer
+        rt = this.make.renderTexture({ width: 800, height: 800 }, false);
+        rt.fill(0xffffff, 0.7); // Semi-transparent "snowy" white
         rt.setOrigin(0, 0);
 
-        // 3. The Beaver Sprite
+        // 3. THE MAGIC: The Oval Mask (Ice Only)
+        // This makes sure the "Rough Ice" only appears on the pond area
+        let shape = this.make.graphics();
+        shape.fillStyle(0xffffff);
+        // Drawing an oval that fits your pond image
+        shape.fillEllipse(400, 520, 650, 400); 
+        let mask = shape.createGeometryMask();
+        rt.setMask(mask);
+
+        // 4. The Beaver
         beaver = this.add.sprite(400, 400, 'beaver');
-        beaver.setScale(0.3); // Adjust this if the beaver is too big/small
+        beaver.setScale(0.25); 
         
-        coverageText = document.getElementById('coverage');
+        brush = this.make.image({ key: 'brush' }, false);
     }
 
     function update() {
         let pointer = this.input.activePointer;
-
         if (pointer.isDown) {
-            // Smoothly follow the pointer
-            beaver.x = Phaser.Math.Linear(beaver.x, pointer.x, 0.2);
-            beaver.y = Phaser.Math.Linear(beaver.y, pointer.y, 0.2);
+            // Smooth beaver movement
+            beaver.x = Phaser.Math.Linear(beaver.x, pointer.x, 0.15);
+            beaver.y = Phaser.Math.Linear(beaver.y, pointer.y, 0.15);
 
-            // Erase the "Rough Ice" where the beaver is
-            // Offset slightly to align with the rake's position
-            rt.erase('brush', beaver.x, beaver.y + 20);
-            
-            // In a full version, we would calculate % here. 
-            // For the MVP, we'll keep it simple!
+            // Buffer the ice
+            // We rotate the brush to match the beaver's direction
+            rt.erase(brush, beaver.x, beaver.y + 30);
         }
     }
 </script>
