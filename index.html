@@ -4,28 +4,31 @@
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
         body { margin: 0; background: #001f3f; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: 'Arial Black', Gadget, sans-serif; }
-        #ui-layer { 
-            position: absolute; 
-            top: 40px; 
-            width: 750px; 
-            display: flex; 
-            justify-content: space-between; 
-            color: #fff; 
-            pointer-events: none; 
-            z-index: 10; 
-            font-size: 42px; /* Massive Visibility */
-            text-shadow: 4px 4px 8px #000; 
-            letter-spacing: 2px;
-        }
-        canvas { border: 8px solid #fff; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        #ui-layer { position: absolute; top: 40px; width: 750px; display: flex; justify-content: space-between; color: #fff; pointer-events: none; z-index: 10; font-size: 42px; text-shadow: 4px 4px 8px #000; }
         .stat-label { font-size: 18px; display: block; color: #ffd700; text-transform: uppercase; }
+        
+        /* Custom End Screen */
+        #end-screen { 
+            position: absolute; display: none; flex-direction: column; align-items: center; justify-content: center;
+            width: 100%; height: 100%; background: rgba(0,31,63,0.9); z-index: 100; color: white; text-align: center;
+        }
+        #rank-title { font-size: 60px; color: #ffd700; margin-bottom: 10px; }
+        #rank-msg { font-size: 30px; margin-bottom: 30px; }
+        button { padding: 15px 40px; font-size: 24px; font-weight: bold; cursor: pointer; border-radius: 50px; border: none; background: #fff; color: #001f3f; }
     </style>
 </head>
 <body>
     <div id="ui-layer">
-        <div><span class="stat-label">Time Remaining</span><span id="timer">30</span></div>
-        <div style="text-align: right;"><span class="stat-label">Ice Polished</span><span id="score">0%</span></div>
+        <div><span class="stat-label">Timer</span><span id="timer">30</span></div>
+        <div style="text-align: right;"><span class="stat-label">Polished</span><span id="score">0%</span></div>
     </div>
+
+    <div id="end-screen">
+        <div id="rank-title">ROOKIE</div>
+        <div id="rank-msg">Give'r another go, eh?</div>
+        <button onclick="location.reload()">PLAY AGAIN</button>
+    </div>
+
 <script>
     const config = {
         type: Phaser.AUTO,
@@ -35,14 +38,14 @@
     };
 
     const game = new Phaser.Game(config);
-    let beaver, rt, pondMask, brush;
-    let scoreText, timerText;
+    let beaver, rt, pondMask;
     let timeLeft = 30;
     let totalCleaned = 0;
+    let isGameOver = false;
 
     function preload() {
-        this.load.image('pond', 'pond.jpg?v=5'); 
-        this.load.image('beaver', 'beaver.png?v=5');
+        this.load.image('pond', 'pond.jpg?v=6'); 
+        this.load.image('beaver', 'beaver.png?v=6');
         let graphics = this.make.graphics({ x: 0, y: 0, add: false });
         graphics.fillStyle(0xffffff, 1);
         graphics.fillCircle(40, 40, 40);
@@ -62,44 +65,60 @@
         rt.setMask(shape.createGeometryMask());
 
         beaver = this.add.sprite(400, 600, 'beaver').setScale(0.25);
-        scoreText = document.getElementById('score');
-        timerText = document.getElementById('timer');
 
         this.time.addEvent({
             delay: 1000,
             callback: () => {
                 if (timeLeft > 0) {
                     timeLeft--;
-                    timerText.innerText = timeLeft;
-                    if(timeLeft <= 5) timerText.style.color = "#ff4444";
-                } else {
-                    alert(`Pond Complete! Score: ${Math.floor(totalCleaned)}%`);
-                    location.reload();
+                    document.getElementById('timer').innerText = timeLeft;
+                } else if (!isGameOver) {
+                    showEndScreen();
                 }
             },
             callbackScope: this, loop: true
         });
     }
 
-    function update() {
-        let pointer = this.input.activePointer;
-        if (pointer.isDown) {
-            if (pondMask.contains(pointer.x, pointer.y)) {
-                beaver.x = Phaser.Math.Linear(beaver.x, pointer.x, 0.2);
-                beaver.y = Phaser.Math.Linear(beaver.y, pointer.y, 0.2);
-                
-                // VIBRATION TRIGGER
-                // This triggers the browser's native vibration (works on Android/some Mobile Browsers)
-                // For iOS App Store, we will use your Capawesome plugin next!
-                if (navigator.vibrate) {
-                    navigator.vibrate(10); 
-                }
+    function showEndScreen() {
+        isGameOver = true;
+        const screen = document.getElementById('end-screen');
+        const title = document.getElementById('rank-title');
+        const msg = document.getElementById('rank-msg');
+        
+        let score = Math.floor(totalCleaned);
+        
+        if (score < 15) {
+            title.innerText = "DIRTY POND!";
+            msg.innerText = "You're a real keener, but the ice is still a mess!";
+        } else if (score < 40) {
+            title.innerText = "OUT FOR A STROLL?";
+            msg.innerText = "Not too bad for a rookie, eh?";
+        } else if (score < 70) {
+            title.innerText = "GOOD EFFORT, BUD!";
+            msg.innerText = "You're starting to get the hang of it!";
+        } else if (score < 90) {
+            title.innerText = "SOLID JOB, YA HOSER!";
+            msg.innerText = "Take off to the next level, you're a pro!";
+        } else {
+            title.innerText = "LEGENDARY BUFFER!";
+            msg.innerText = "Holy Mackinaw! That ice is pure glass!";
+        }
+        
+        screen.style.display = 'flex';
+    }
 
-                rt.erase('brush', beaver.x, beaver.y + 25);
-                if (totalCleaned < 100) {
-                    totalCleaned += 0.2;
-                    scoreText.innerText = `${Math.floor(totalCleaned)}%`;
-                }
+    function update() {
+        if (isGameOver) return;
+        let pointer = this.input.activePointer;
+        if (pointer.isDown && pondMask.contains(pointer.x, pointer.y)) {
+            beaver.x = Phaser.Math.Linear(beaver.x, pointer.x, 0.2);
+            beaver.y = Phaser.Math.Linear(beaver.y, pointer.y, 0.2);
+            if (navigator.vibrate) navigator.vibrate(10);
+            rt.erase('brush', beaver.x, beaver.y + 25);
+            if (totalCleaned < 100) {
+                totalCleaned += 0.25;
+                document.getElementById('score').innerText = `${Math.floor(totalCleaned)}%`;
             }
         }
     }
