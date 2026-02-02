@@ -20,35 +20,30 @@
     let beaver, rt, brush;
 
     function preload() {
-        this.load.image('pond', 'pond.jpg'); 
-        this.load.image('beaver', 'beaver.png');
+        // The '?v=2' tricks your phone into loading the new version
+        this.load.image('pond', 'pond.jpg?v=2'); 
+        this.load.image('beaver', 'beaver.png?v=2');
         
-        // Custom rake-shaped brush
         let graphics = this.make.graphics({ x: 0, y: 0, add: false });
         graphics.fillStyle(0xffffff, 1);
-        graphics.fillRect(0, 0, 80, 20); // A horizontal rake shape
-        graphics.generateTexture('brush', 80, 20);
+        graphics.fillCircle(30, 30, 30); // Rounder brush for smoother cleaning
+        graphics.generateTexture('brush', 60, 60);
     }
 
     function create() {
-        // 1. Bottom Layer: The Beautiful Pond Art
-        let pond = this.add.image(400, 400, 'pond').setDisplaySize(800, 800);
+        this.add.image(400, 400, 'pond').setDisplaySize(800, 800);
         
-        // 2. The "Rough Ice" Layer
         rt = this.make.renderTexture({ width: 800, height: 800 }, false);
-        rt.fill(0xffffff, 0.7); // Semi-transparent "snowy" white
+        rt.fill(0xcceeff, 0.6); // Light blue tint so we can see the ice
         rt.setOrigin(0, 0);
 
-        // 3. THE MAGIC: The Oval Mask (Ice Only)
-        // This makes sure the "Rough Ice" only appears on the pond area
+        // ADJUSTED MASK: Based on your screenshot, the pond is centered
         let shape = this.make.graphics();
         shape.fillStyle(0xffffff);
-        // Drawing an oval that fits your pond image
-        shape.fillEllipse(400, 520, 650, 400); 
+        shape.fillEllipse(400, 600, 600, 350); // Centered on the lower half pond
         let mask = shape.createGeometryMask();
         rt.setMask(mask);
 
-        // 4. The Beaver
         beaver = this.add.sprite(400, 400, 'beaver');
         beaver.setScale(0.25); 
         
@@ -58,13 +53,11 @@
     function update() {
         let pointer = this.input.activePointer;
         if (pointer.isDown) {
-            // Smooth beaver movement
             beaver.x = Phaser.Math.Linear(beaver.x, pointer.x, 0.15);
             beaver.y = Phaser.Math.Linear(beaver.y, pointer.y, 0.15);
 
-            // Buffer the ice
-            // We rotate the brush to match the beaver's direction
-            rt.erase(brush, beaver.x, beaver.y + 30);
+            // This is the cleaning action
+            rt.erase('brush', beaver.x, beaver.y + 30);
         }
     }
 </script>
