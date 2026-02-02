@@ -6,138 +6,168 @@
         body { margin: 0; background: #001f3f; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: 'Arial Black', sans-serif; }
         #ui-layer { position: absolute; top: 40px; width: 750px; display: flex; justify-content: space-between; color: #fff; pointer-events: none; z-index: 10; font-size: 42px; text-shadow: 4px 4px 8px #000; }
         .stat-label { font-size: 18px; display: block; color: #ffd700; text-transform: uppercase; }
-        
-        /* Overlays */
-        .overlay { position: absolute; width: 100%; height: 100%; background: rgba(0,31,63,0.85); z-index: 100; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-        #end-screen { display: none; }
-        button { padding: 20px 50px; font-size: 28px; font-weight: bold; cursor: pointer; border-radius: 50px; border: none; background: #ffd700; color: #001f3f; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
-        button:hover { background: #fff; }
+        .overlay { position: absolute; width: 100%; height: 100%; background: rgba(0,31,63,0.95); z-index: 100; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; }
+        button { padding: 20px 50px; font-size: 28px; font-weight: bold; cursor: pointer; border-radius: 50px; border: none; background: #ffd700; color: #001f3f; transition: transform 0.2s; }
+        button:hover { transform: scale(1.1); }
+        #ad-popup { position: absolute; bottom: 100px; background: #ffd700; color: #001f3f; padding: 10px 20px; border-radius: 10px; font-weight: bold; display: none; z-index: 20; animation: bounce 0.5s infinite alternate; }
+        @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-10px); } }
     </style>
 </head>
 <body>
+    <div id="ad-popup">✨ SPONSORED BY THE TREENIS ✨</div>
+
     <div id="start-screen" class="overlay">
-        <h1 style="font-size: 60px; color: #ffd700;">BEAVER BUFFER</h1>
-        <p style="font-size: 20px; margin-bottom: 30px;">Clear the pond before the game starts!</p>
+        <h1 style="font-size: 60px; color: #ffd700; margin: 0;">BEAVER BUFFER</h1>
+        <p>Grab your rake and get to work, bud!</p>
         <button onclick="startGame()">BEGIN NOW, EH?</button>
     </div>
 
     <div id="ui-layer">
         <div><span class="stat-label">Timer</span><span id="timer">30</span></div>
-        <div style="text-align: right;"><span class="stat-label">Polished</span><span id="score">0%</span></div>
+        <div style="text-align: right;"><span class="stat-label">Ice Polished</span><span id="score">0%</span></div>
     </div>
 
-    <div id="end-screen" class="overlay">
-        <div id="rank-title" style="font-size: 50px; color: #ffd700;"></div>
-        <div id="rank-msg" style="font-size: 24px; margin-bottom: 30px;"></div>
-        <button onclick="location.reload()">RE-BUFF THE ICE</button>
+    <div id="end-screen" class="overlay" style="display:none;">
+        <h2 id="rank-title" style="font-size: 50px;"></h2>
+        <p id="rank-msg" style="font-size: 24px;"></p>
+        <button id="next-btn" onclick="nextLevel()">PROCEED TO RINK</button>
+        <button id="retry-btn" onclick="location.reload()" style="display:none; background:#fff;">TRY AGAIN</button>
     </div>
 
 <script>
     const config = {
         type: Phaser.AUTO,
-        width: 800,
-        height: 800,
+        width: 800, height: 800,
         scene: { preload: preload, create: create, update: update }
     };
 
     const game = new Phaser.Game(config);
-    let beaver, rt, pondMask, audioCtx;
-    let timeLeft = 30;
-    let totalCleaned = 0;
-    let isGameOver = false;
-    let gameStarted = false;
+    let beaver, rt, currentMask, goose, adPopup;
+    let timeLeft = 30, totalCleaned = 0, gameStarted = false, currentLevel = 1;
 
     function preload() {
-        this.load.image('pond', 'pond.jpg?v=7'); 
-        this.load.image('beaver', 'beaver.png?v=7');
+        // Assets
+        this.load.image('pond', 'pond.jpg');
+        this.load.image('rink', 'rink.jpg');
+        this.load.image('beaver', 'beaver.png');
+        this.load.image('beaver-cart', 'beaver-cart.png');
+        this.load.image('goose', 'goose.png'); // The Cobra Turkey
+
+        // Brushes
         let graphics = this.make.graphics({ x: 0, y: 0, add: false });
         graphics.fillStyle(0xffffff, 1);
         graphics.fillCircle(40, 40, 40);
         graphics.generateTexture('brush', 80, 80);
+        graphics.clear();
+        graphics.fillRect(0, 0, 160, 50); // Flooding bar
+        graphics.generateTexture('cart-brush', 160, 50);
     }
 
     function create() {
-        this.add.image(400, 400, 'pond').setDisplaySize(800, 800);
+        this.bg = this.add.image(400, 400, 'pond').setDisplaySize(800, 800);
         rt = this.make.renderTexture({ width: 800, height: 800 }, false);
         rt.fill(0xcceeff, 0.85);
-        rt.setOrigin(0, 0);
-
-        pondMask = new Phaser.Geom.Ellipse(400, 600, 650, 380);
-        let shape = this.make.graphics();
-        shape.fillStyle(0xffffff);
-        shape.fillEllipse(pondMask.x, pondMask.y, pondMask.width, pondMask.height);
-        rt.setMask(shape.createGeometryMask());
+        
+        // Initial Pond Mask
+        currentMask = new Phaser.Geom.Ellipse(400, 600, 650, 380);
+        let mShape = this.make.graphics().fillStyle(0xffffff).fillEllipse(400, 600, 650, 380);
+        rt.setMask(mShape.createGeometryMask());
 
         beaver = this.add.sprite(400, 600, 'beaver').setScale(0.25);
-        
-        // Prepare Sound
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        goose = this.add.sprite(-200, -200, 'goose').setScale(0.2);
+        adPopup = document.getElementById('ad-popup');
     }
 
     function startGame() {
         document.getElementById('start-screen').style.display = 'none';
         gameStarted = true;
-        
-        // Start Timer
-        game.scene.scenes[0].time.addEvent({
-            delay: 1000,
-            callback: () => {
-                if (timeLeft > 0 && !isGameOver) {
-                    timeLeft--;
-                    document.getElementById('timer').innerText = timeLeft;
-                } else if (!isGameOver) {
-                    showEndScreen();
-                }
-            },
-            callbackScope: game.scene.scenes[0], loop: true
-        });
     }
 
-    function playCrunchSound() {
-        if (!audioCtx) return;
-        let osc = audioCtx.createOscillator();
-        let gain = audioCtx.createGain();
-        osc.type = 'brownnoise'; // Using code-generated noise for ice crunch
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        gain.gain.setValueAtTime(0.01, audioCtx.currentTime);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.05);
+    function nextLevel() {
+        currentLevel = 2;
+        timeLeft = 25; // Harder time limit
+        totalCleaned = 0;
+        document.getElementById('end-screen').style.display = 'none';
+        document.getElementById('score').innerText = '0%';
+        
+        game.scene.scenes[0].bg.setTexture('rink');
+        beaver.setTexture('beaver-cart').setScale(0.3);
+        
+        // Update Mask to Rink Shape
+        currentMask = new Phaser.Geom.Rectangle(100, 250, 600, 450);
+        rt.fill(0xcceeff, 0.9);
+        
+        // Position Goose
+        goose.setPosition(400, 400);
     }
 
     function showEndScreen() {
-        isGameOver = true;
+        gameStarted = false;
         const screen = document.getElementById('end-screen');
         const title = document.getElementById('rank-title');
         const msg = document.getElementById('rank-msg');
         let score = Math.floor(totalCleaned);
         
-        if (score < 40) { title.innerText = "OUT FOR A STROLL?"; msg.innerText = "Not too bad for a rookie, eh?"; }
-        else if (score < 80) { title.innerText = "GOOD EFFORT, BUD!"; msg.innerText = "You're getting the hang of it!"; }
-        else { title.innerText = "SOLID JOB, YA HOSER!"; msg.innerText = "That ice is pure glass!"; }
-        
         screen.style.display = 'flex';
+        if (score >= 85 && currentLevel === 1) {
+            title.innerText = "SOLID JOB, YA HOSER!";
+            msg.innerText = "You're promoted to the Community Rink!";
+            document.getElementById('next-btn').style.display = 'block';
+        } else if (score >= 95 && currentLevel === 2) {
+            title.innerText = "LEGENDARY BUFFER!";
+            msg.innerText = "The Treenis is proud of you!";
+            document.getElementById('next-btn').style.display = 'none';
+            document.getElementById('retry-btn').innerText = "PLAY AGAIN";
+            document.getElementById('retry-btn').style.display = 'block';
+        } else {
+            title.innerText = "NOT CLEAN ENOUGH!";
+            msg.innerText = "Goose got your tongue? Try again!";
+            document.getElementById('next-btn').style.display = 'none';
+            document.getElementById('retry-btn').style.display = 'block';
+        }
     }
 
-    function update() {
-        if (!gameStarted || isGameOver) return;
-        let pointer = this.input.activePointer;
-        if (pointer.isDown && pondMask.contains(pointer.x, pointer.y)) {
-            // Faster tracking (0.5 instead of 0.2)
-            beaver.x = Phaser.Math.Linear(beaver.x, pointer.x, 0.5);
-            beaver.y = Phaser.Math.Linear(beaver.y, pointer.y, 0.5);
-            
-            if (navigator.vibrate) navigator.vibrate(5);
-            playCrunchSound(); // Play the synthesized ice sound
+    function update(time, delta) {
+        if (!gameStarted) return;
 
-            rt.erase('brush', beaver.x, beaver.y + 25);
+        timeLeft -= delta / 1000;
+        document.getElementById('timer').innerText = Math.max(0, Math.ceil(timeLeft));
+        if (timeLeft <= 0) showEndScreen();
+
+        let pointer = this.input.activePointer;
+        if (pointer.isDown && currentMask.contains(pointer.x, pointer.y)) {
+            beaver.x = Phaser.Math.Linear(beaver.x, pointer.x, 0.45);
+            beaver.y = Phaser.Math.Linear(beaver.y, pointer.y, 0.45);
+            
+            let bType = (currentLevel === 1) ? 'brush' : 'cart-brush';
+            rt.erase(bType, beaver.x, beaver.y + (currentLevel === 1 ? 25 : 40));
+            
             if (totalCleaned < 100) {
-                totalCleaned += 0.3;
+                totalCleaned += (currentLevel === 1) ? 0.2 : 0.45;
                 document.getElementById('score').innerText = `${Math.floor(totalCleaned)}%`;
+            }
+
+            // Treenis Ad Interaction
+            if (currentLevel === 2 && beaver.y < 350) {
+                adPopup.style.display = 'block';
+            } else {
+                adPopup.style.display = 'none';
+            }
+        }
+
+        // Goose AI
+        if (currentLevel === 2) {
+            goose.x = 400 + Math.cos(time / 600) * 250;
+            goose.y = 475 + Math.sin(time / 1000) * 150;
+            
+            if (Phaser.Geom.Intersects.RectangleToRectangle(beaver.getBounds(), goose.getBounds())) {
+                timeLeft -= 0.05; // Time drain penalty
+                beaver.setTint(0xff0000); // Visual feedback for "ouch"
+            } else {
+                beaver.clearTint();
             }
         }
     }
 </script>
 </body>
 </html>
- 
