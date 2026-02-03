@@ -3,15 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Beaver Buffer: The Treenis Edition</title>
+    <title>Beaver Buffer: Pro Edition</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
         body { margin: 0; background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: 'Arial Black', sans-serif; }
-        canvas { box-shadow: 0 0 20px rgba(0,0,0,0.5); border: 2px solid #333; }
-        #ui-layer { position: absolute; top: 10px; width: 95%; display: flex; justify-content: space-between; color: #fff; pointer-events: none; z-index: 10; font-size: 24px; text-shadow: 2px 2px 4px #000; }
+        #ui-layer { position: absolute; top: 15px; width: 90%; display: flex; justify-content: space-between; color: #fff; pointer-events: none; z-index: 10; font-size: 28px; text-shadow: 2px 2px 4px #000; }
         .stat-label { font-size: 12px; display: block; color: #ffd700; text-transform: uppercase; }
         .overlay { position: absolute; width: 100%; height: 100%; background: rgba(0,31,63,0.95); z-index: 100; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; box-sizing: border-box; }
-        button { padding: 15px 40px; font-size: 20px; font-weight: bold; cursor: pointer; border-radius: 50px; border: none; background: #ffd700; color: #001f3f; box-shadow: 0 4px 0 #b89b00; }
+        button { padding: 18px 45px; font-size: 22px; font-weight: bold; cursor: pointer; border-radius: 50px; border: none; background: #ffd700; color: #001f3f; box-shadow: 0 4px 0 #b89b00; }
         #ad-popup { position: absolute; top: 80px; background: #fff; padding: 5px; border-radius: 5px; display: none; z-index: 20; border: 2px solid #000; }
     </style>
 </head>
@@ -20,27 +19,26 @@
     <div id="ad-popup"><img src="sponsor-logo.png" height="40"></div>
 
     <div id="start-screen" class="overlay">
-        <h1 style="color: #ffd700;">BEAVER BUFFER</h1>
-        <p>Clear the ice, bud! Get 85% to move up.</p>
-        <button onclick="startGame()">GIVE 'ER!</button>
+        <h1 style="color: #ffd700; font-size: 45px;">BEAVER BUFFER</h1>
+        <p style="max-width: 400px;">Grab your rake and give the pond a good scrape, bud! Clear 85% before the clock runs out.</p>
+        <button onclick="startGame()">GIVE 'ER, EH?</button>
     </div>
 
     <div id="level-intro" class="overlay" style="display:none;">
-        <h2 id="intro-title" style="color: #ffd700;">PROMOTED!</h2>
-        <div id="intro-body" style="margin-bottom:20px;"></div>
-        <button onclick="proceedToLevel()">NEXT RINK</button>
+        <h2 id="intro-title" style="color: #ffd700; font-size: 35px;">BEAUTY!</h2>
+        <div id="intro-body" style="margin: 20px 0; font-family: Arial; line-height: 1.5;"></div>
+        <button onclick="proceedToLevel()">LET'S GO!</button>
     </div>
 
     <div id="ui-layer">
         <div><span class="stat-label">Time</span><span id="timer">30</span></div>
-        <div style="text-align: right;"><span class="stat-label">Cleaned</span><span id="score">0%</span></div>
+        <div style="text-align: right;"><span class="stat-label">Ice Polished</span><span id="score">0%</span></div>
     </div>
 
 <script>
     const config = {
         type: Phaser.AUTO,
         width: 800, height: 800,
-        backgroundColor: '#001f3f',
         scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
         physics: { default: 'arcade' },
         scene: { preload, create, update }
@@ -48,8 +46,9 @@
 
     const game = new Phaser.Game(config);
     let beaver, rt, currentMask, goose, puck, crunchSound, soundContext;
-    let timeLeft = 30, totalCleaned = 0, gameStarted = false, currentLevel = 1;
-    let lastPos = {x:0, y:0};
+    let timeLeft = 30, gameStarted = false, currentLevel = 1;
+    let cleanedTiles = new Set();
+    const GRID_SIZE = 20;
 
     function preload() {
         this.load.image('pond', 'pond.jpg'); this.load.image('rink', 'rink.jpg'); this.load.image('arena', 'arena.jpg');
@@ -66,14 +65,15 @@
         beaver = this.physics.add.sprite(400, 600, 'beaver').setScale(0.25).setDepth(2);
         
         goose = this.physics.add.sprite(-200, -200, 'goose').setScale(0.22);
-        puck = this.physics.add.sprite(-200, -200, 'puck').setScale(0.15);
+        puck = this.physics.add.sprite(-200, -200, 'puck').setScale(0.08);
 
+        // iPhone Audio Unlock
         soundContext = new (window.AudioContext || window.webkitAudioContext)();
         let bufferSize = 4096;
         crunchSound = soundContext.createScriptProcessor(bufferSize, 1, 1);
         crunchSound.onaudioprocess = (e) => {
             let out = e.outputBuffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) out[i] = (Math.random() * 2 - 1) * 0.03;
+            for (let i = 0; i < bufferSize; i++) out[i] = (Math.random() * 2 - 1) * 0.04;
         };
     }
 
@@ -90,45 +90,70 @@
 
         let pointer = this.input.activePointer;
         if (pointer.isDown && currentMask.contains(pointer.x, pointer.y)) {
-            let dist = Phaser.Math.Distance.Between(beaver.x, beaver.y, pointer.x, pointer.y);
-            
             beaver.x = Phaser.Math.Linear(beaver.x, pointer.x, 0.2);
             beaver.y = Phaser.Math.Linear(beaver.y, pointer.y, 0.2);
 
-            // Only score if moving to a new spot
-            if (dist > 5) {
+            // Unique area tracking
+            let tx = Math.floor(beaver.x / GRID_SIZE);
+            let ty = Math.floor(beaver.y / GRID_SIZE);
+            let tileId = `${tx}_${ty}`;
+            
+            if (!cleanedTiles.has(tileId)) {
+                cleanedTiles.add(tileId);
                 rt.erase('beaver', beaver.x, beaver.y);
-                totalCleaned += (currentLevel === 3) ? 0.2 : 0.15;
-                document.getElementById('score').innerText = `${Math.min(100, Math.floor(totalCleaned))}%`;
+                let progress = (cleanedTiles.size / 600) * 100; // Calibrated for Level 1
+                document.getElementById('score').innerText = `${Math.min(100, Math.floor(progress))}%`;
                 
-                if (window.navigator.vibrate) window.navigator.vibrate(5);
+                // iPhone Haptics & Sound
+                if (window.navigator.vibrate) window.navigator.vibrate(10);
                 crunchSound.connect(soundContext.destination);
             }
+        } else {
+            if (crunchSound) crunchSound.disconnect();
+        }
 
-            if (currentLevel === 2 && beaver.y < 350) document.getElementById('ad-popup').style.display = 'block';
+        // Level 2: Moving Goose
+        if (currentLevel === 2) {
+            this.physics.moveToObject(goose, beaver, 120);
+            if (Phaser.Geom.Intersects.RectangleToRectangle(beaver.getBounds(), goose.getBounds())) {
+                timeLeft -= 0.1; // Drain time on hit
+                this.cameras.main.shake(100, 0.01);
+            }
+            if (beaver.y < 350) document.getElementById('ad-popup').style.display = 'block';
             else document.getElementById('ad-popup').style.display = 'none';
+        }
 
-        } else { if (crunchSound) crunchSound.disconnect(); }
+        // Level 3: Bouncing Puck
+        if (currentLevel === 3) {
+            if (puck.x > 750 || puck.x < 50) puck.body.velocity.x *= -1;
+            if (puck.y > 700 || puck.y < 200) puck.body.velocity.y *= -1;
+            if (Phaser.Geom.Intersects.RectangleToRectangle(beaver.getBounds(), puck.getBounds())) {
+                timeLeft -= 0.2;
+                this.cameras.main.shake(100, 0.02);
+            }
+        }
 
         if (timeLeft <= 0) handleEnd();
     }
 
     function handleEnd() {
         gameStarted = false;
-        if (totalCleaned < 85) { alert("Clear more ice next time!"); location.reload(); return; }
+        let finalScore = parseInt(document.getElementById('score').innerText);
+        if (finalScore < 80) { alert("Not enough polish! Give 'er another go, bud."); location.reload(); return; }
         
-        document.getElementById('level-intro').style.display = 'flex';
+        const intro = document.getElementById('level-intro');
         const body = document.getElementById('intro-body');
+        intro.style.display = 'flex';
         
-        if (currentLevel === 1) body.innerHTML = "You're at the Local Rink. Watch for the Cobra Turkey!";
-        else if (currentLevel === 2) body.innerHTML = "Big League Arena! Watch for flying pucks!";
-        else { alert("YOU'RE AN ICE LEGEND!"); location.reload(); }
+        if (currentLevel === 1) body.innerHTML = "You're at the Community Rink now. Watch out for the <b>Cobra Turkey</b>! That goose is a real hoser.";
+        else if (currentLevel === 2) body.innerHTML = "Welcome to the Big Leagues! Watch for <b>flying pucks</b> and drive that Lawnmower like a pro!";
+        else { body.innerHTML = "<b>YOU'RE THE CHAMPION OF THE NORTH!</b><br>Enjoy the poutine, you absolute legend."; }
     }
 
     function proceedToLevel() {
         document.getElementById('level-intro').style.display = 'none';
         currentLevel++;
-        timeLeft = 30; totalCleaned = 0;
+        timeLeft = 35; cleanedTiles.clear();
         rt.clear(); rt.fill(0xcceeff, 0.95);
         document.getElementById('score').innerText = "0%";
 
@@ -137,13 +162,13 @@
             scene.bg.setTexture('rink');
             beaver.setTexture('beaver-cart').setScale(0.3);
             currentMask = new Phaser.Geom.Rectangle(100, 250, 600, 450);
-            goose.setPosition(400, 400);
+            goose.setPosition(100, 300).setVelocity(100, 100);
         } else if (currentLevel === 3) {
             scene.bg.setTexture('arena');
             beaver.setTexture('beaver-pro').setScale(0.4);
             currentMask = new Phaser.Geom.Rectangle(50, 200, 700, 500);
             goose.setPosition(-500, -500);
-            puck.setPosition(0, 450);
+            puck.setPosition(400, 400).setVelocity(300, 300);
         }
         gameStarted = true;
     }
