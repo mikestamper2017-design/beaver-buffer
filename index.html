@@ -2,81 +2,72 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Beaver Buffer: Pro Edition</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Beaver Buffer: The Treenis Edition</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
-        body { margin: 0; background: #001f3f; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: 'Arial Black', sans-serif; }
-        #ui-layer { position: absolute; top: 20px; width: 90%; max-width: 750px; display: flex; justify-content: space-between; color: #fff; pointer-events: none; z-index: 10; font-size: 32px; text-shadow: 3px 3px 6px #000; }
-        .stat-label { font-size: 14px; display: block; color: #ffd700; text-transform: uppercase; letter-spacing: 1px; }
+        body { margin: 0; background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: 'Arial Black', sans-serif; }
+        canvas { box-shadow: 0 0 20px rgba(0,0,0,0.5); border: 2px solid #333; }
+        #ui-layer { position: absolute; top: 10px; width: 95%; display: flex; justify-content: space-between; color: #fff; pointer-events: none; z-index: 10; font-size: 24px; text-shadow: 2px 2px 4px #000; }
+        .stat-label { font-size: 12px; display: block; color: #ffd700; text-transform: uppercase; }
         .overlay { position: absolute; width: 100%; height: 100%; background: rgba(0,31,63,0.95); z-index: 100; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; box-sizing: border-box; }
-        .instruction-text { font-size: 18px; line-height: 1.4; margin: 20px 0; max-width: 500px; color: #e0e0e0; font-family: 'Arial', sans-serif; }
-        .warning-text { color: #ff4d4d; font-weight: bold; font-size: 22px; text-transform: uppercase; margin-top: 10px; }
-        button { padding: 15px 40px; font-size: 24px; font-weight: bold; cursor: pointer; border-radius: 50px; border: none; background: #ffd700; color: #001f3f; transition: transform 0.2s; box-shadow: 0 4px 0 #b89b00; }
-        #ad-popup { position: absolute; top: 100px; background: #fff; color: #d32f2f; padding: 8px 15px; border-radius: 5px; font-weight: bold; display: none; z-index: 20; border: 2px solid #000; font-size: 14px; }
-        #reward-screen { position: absolute; width: 85%; max-width: 450px; background: #fff; border: 10px solid #ffd700; padding: 20px; z-index: 200; display: none; text-align: center; border-radius: 20px; color: #000; box-shadow: 0 0 50px rgba(0,0,0,0.8); }
+        button { padding: 15px 40px; font-size: 20px; font-weight: bold; cursor: pointer; border-radius: 50px; border: none; background: #ffd700; color: #001f3f; box-shadow: 0 4px 0 #b89b00; }
+        #ad-popup { position: absolute; top: 80px; background: #fff; padding: 5px; border-radius: 5px; display: none; z-index: 20; border: 2px solid #000; }
     </style>
 </head>
 <body>
 
-    <div id="ad-popup">SPONSORED BY THE TREENIS</div>
+    <div id="ad-popup"><img src="sponsor-logo.png" height="40"></div>
 
     <div id="start-screen" class="overlay">
-        <h1 style="font-size: 50px; color: #ffd700; margin-bottom: 0;">BEAVER BUFFER</h1>
-        <div class="instruction-text">
-            <p>Grab your rake and give the pond a good scrape, bud!<br>
-            Clear at least <strong>85%</strong> of the snow before time runs out.</p>
-        </div>
-        <button onclick="startGame()">GIVE 'ER, EH?</button>
+        <h1 style="color: #ffd700;">BEAVER BUFFER</h1>
+        <p>Clear the ice, bud! Get 85% to move up.</p>
+        <button onclick="startGame()">GIVE 'ER!</button>
     </div>
 
     <div id="level-intro" class="overlay" style="display:none;">
-        <h2 id="intro-title" style="color: #ffd700; font-size: 40px;">PROMOTED!</h2>
-        <div id="intro-body" class="instruction-text"></div>
-        <button onclick="proceedToLevel()">KEEP GOING!</button>
-    </div>
-
-    <div id="reward-screen">
-        <img src="reward.png" style="width: 100%; border-radius: 10px;">
-        <h2 style="margin: 10px 0;">🇨🇦 BEST PATH BONUS! 🇨🇦</h2>
-        <p>A true Canadian Feast! Enjoy the Poutine & Smarties, legend.</p>
-        <button onclick="closeReward()">BEAUTY!</button>
+        <h2 id="intro-title" style="color: #ffd700;">PROMOTED!</h2>
+        <div id="intro-body" style="margin-bottom:20px;"></div>
+        <button onclick="proceedToLevel()">NEXT RINK</button>
     </div>
 
     <div id="ui-layer">
-        <div><span class="stat-label">Time Left</span><span id="timer">30</span></div>
-        <div style="text-align: right;"><span class="stat-label">Ice Polished</span><span id="score">0%</span></div>
+        <div><span class="stat-label">Time</span><span id="timer">30</span></div>
+        <div style="text-align: right;"><span class="stat-label">Cleaned</span><span id="score">0%</span></div>
     </div>
 
 <script>
-    const config = { type: Phaser.AUTO, width: 800, height: 800, physics: { default: 'arcade' }, scene: { preload: preload, create: create, update: update } };
+    const config = {
+        type: Phaser.AUTO,
+        width: 800, height: 800,
+        backgroundColor: '#001f3f',
+        scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+        physics: { default: 'arcade' },
+        scene: { preload, create, update }
+    };
+
     const game = new Phaser.Game(config);
     let beaver, rt, currentMask, goose, puck, crunchSound, soundContext;
-    let timeLeft = 30, totalCleaned = 0, gameStarted = false, currentLevel = 1, pathHistory = [];
+    let timeLeft = 30, totalCleaned = 0, gameStarted = false, currentLevel = 1;
+    let lastPos = {x:0, y:0};
 
     function preload() {
-        this.load.image('pond', 'pond.jpg');
-        this.load.image('rink', 'rink.jpg');
-        this.load.image('arena', 'arena.jpg');
-        this.load.image('beaver', 'beaver.png');
-        this.load.image('beaver-cart', 'beaver-cart.png');
-        this.load.image('beaver-pro', 'beaver-pro.png');
-        this.load.image('goose', 'goose.png');
-        this.load.image('puck', 'puck.png');
-        this.load.image('reward', 'reward.png');
+        this.load.image('pond', 'pond.jpg'); this.load.image('rink', 'rink.jpg'); this.load.image('arena', 'arena.jpg');
+        this.load.image('beaver', 'beaver.png'); this.load.image('beaver-cart', 'beaver-cart.png'); this.load.image('beaver-pro', 'beaver-pro.png');
+        this.load.image('goose', 'goose.png'); this.load.image('puck', 'puck.png'); this.load.image('sponsor-logo', 'sponsor-logo.png');
     }
 
     function create() {
         this.bg = this.add.image(400, 400, 'pond').setDisplaySize(800, 800);
         rt = this.make.renderTexture({ width: 800, height: 800 }, false);
-        rt.fill(0xcceeff, 0.9);
-        currentMask = new Phaser.Geom.Ellipse(400, 600, 650, 380);
+        rt.fill(0xcceeff, 0.95);
         
-        beaver = this.physics.add.sprite(400, 600, 'beaver').setScale(0.25);
+        currentMask = new Phaser.Geom.Ellipse(400, 600, 650, 380);
+        beaver = this.physics.add.sprite(400, 600, 'beaver').setScale(0.25).setDepth(2);
+        
         goose = this.physics.add.sprite(-200, -200, 'goose').setScale(0.22);
         puck = this.physics.add.sprite(-200, -200, 'puck').setScale(0.15);
 
-        // Audio Engine
         soundContext = new (window.AudioContext || window.webkitAudioContext)();
         let bufferSize = 4096;
         crunchSound = soundContext.createScriptProcessor(bufferSize, 1, 1);
@@ -99,81 +90,63 @@
 
         let pointer = this.input.activePointer;
         if (pointer.isDown && currentMask.contains(pointer.x, pointer.y)) {
+            let dist = Phaser.Math.Distance.Between(beaver.x, beaver.y, pointer.x, pointer.y);
+            
             beaver.x = Phaser.Math.Linear(beaver.x, pointer.x, 0.2);
             beaver.y = Phaser.Math.Linear(beaver.y, pointer.y, 0.2);
-            
-            // Haptics & Crunchy Sound
-            if (time % 10 > 8 && window.navigator.vibrate) window.navigator.vibrate(5);
-            crunchSound.connect(soundContext.destination);
-            rt.erase('beaver', beaver.x, beaver.y);
-            
-            totalCleaned += (currentLevel === 3) ? 0.4 : 0.25;
-            document.getElementById('score').innerText = `${Math.min(100, Math.floor(totalCleaned))}%`;
 
-            // Ad Popup (Level 2)
+            // Only score if moving to a new spot
+            if (dist > 5) {
+                rt.erase('beaver', beaver.x, beaver.y);
+                totalCleaned += (currentLevel === 3) ? 0.2 : 0.15;
+                document.getElementById('score').innerText = `${Math.min(100, Math.floor(totalCleaned))}%`;
+                
+                if (window.navigator.vibrate) window.navigator.vibrate(5);
+                crunchSound.connect(soundContext.destination);
+            }
+
             if (currentLevel === 2 && beaver.y < 350) document.getElementById('ad-popup').style.display = 'block';
             else document.getElementById('ad-popup').style.display = 'none';
 
-            // Secret Path (Level 3)
-            if (currentLevel === 3) trackPath(beaver.x, beaver.y);
-        } else {
-            if (crunchSound) crunchSound.disconnect();
-        }
+        } else { if (crunchSound) crunchSound.disconnect(); }
 
-        // Obstacle Logic
-        if (currentLevel === 2 && Phaser.Geom.Intersects.RectangleToRectangle(beaver.getBounds(), goose.getBounds())) timeLeft -= 0.1;
-        if (currentLevel === 3) {
-            puck.x += 2; if (puck.x > 800) puck.x = 0;
-            if (Phaser.Geom.Intersects.RectangleToRectangle(beaver.getBounds(), puck.getBounds())) timeLeft -= 0.1;
-        }
-
-        if (timeLeft <= 0) handleEndLevel();
+        if (timeLeft <= 0) handleEnd();
     }
 
-    function handleEndLevel() {
+    function handleEnd() {
         gameStarted = false;
-        if (totalCleaned < 80) { alert("Not enough polish! Give 'er another go."); location.reload(); return; }
-
-        const intro = document.getElementById('level-intro');
+        if (totalCleaned < 85) { alert("Clear more ice next time!"); location.reload(); return; }
+        
+        document.getElementById('level-intro').style.display = 'flex';
         const body = document.getElementById('intro-body');
-        intro.style.display = 'flex';
-
-        if (currentLevel === 1) {
-            body.innerHTML = `<p>Community Rink time! Clear the ice, but watch for the <strong>Cobra Turkey</strong>!</p><p class="warning-text">⚠️ GOOSE ALERT ⚠️</p>`;
-        } else if (currentLevel === 2) {
-            body.innerHTML = `<p>The Big Leagues! You're on the vintage Lawn-Zamboni. Hunt for that <strong>Best Path</strong> reward!</p>`;
-        } else { alert("YOU'RE THE CHAMPION OF THE NORTH!"); location.reload(); }
+        
+        if (currentLevel === 1) body.innerHTML = "You're at the Local Rink. Watch for the Cobra Turkey!";
+        else if (currentLevel === 2) body.innerHTML = "Big League Arena! Watch for flying pucks!";
+        else { alert("YOU'RE AN ICE LEGEND!"); location.reload(); }
     }
 
     function proceedToLevel() {
         document.getElementById('level-intro').style.display = 'none';
         currentLevel++;
-        timeLeft = 30; totalCleaned = 0; rt.fill(0xcceeff, 0.9);
-        
+        timeLeft = 30; totalCleaned = 0;
+        rt.clear(); rt.fill(0xcceeff, 0.95);
+        document.getElementById('score').innerText = "0%";
+
+        const scene = game.scene.scenes[0];
         if (currentLevel === 2) {
-            this.game.scene.scenes[0].bg.setTexture('rink');
+            scene.bg.setTexture('rink');
             beaver.setTexture('beaver-cart').setScale(0.3);
             currentMask = new Phaser.Geom.Rectangle(100, 250, 600, 450);
             goose.setPosition(400, 400);
         } else if (currentLevel === 3) {
-            this.game.scene.scenes[0].bg.setTexture('arena');
+            scene.bg.setTexture('arena');
             beaver.setTexture('beaver-pro').setScale(0.4);
             currentMask = new Phaser.Geom.Rectangle(50, 200, 700, 500);
-            goose.setPosition(-200, -200);
-            puck.setPosition(400, 450);
+            goose.setPosition(-500, -500);
+            puck.setPosition(0, 450);
         }
         gameStarted = true;
     }
-
-    function trackPath(x, y) {
-        pathHistory.push({x, y});
-        const tl = pathHistory.some(p => p.x < 150 && p.y < 300);
-        const br = pathHistory.some(p => p.x > 650 && p.y > 600);
-        if (tl && br && totalCleaned > 95) { document.getElementById('reward-screen').style.display = 'block'; gameStarted = false; }
-    }
-
-    function closeReward() { document.getElementById('reward-screen').style.display = 'none'; gameStarted = true; }
 </script>
 </body>
 </html>
- 
