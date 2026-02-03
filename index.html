@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-XXXXXXXXXX');
+    </script>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
@@ -22,17 +30,17 @@
         .secondary-link { color: #ffd700; text-decoration: none; font-size: 16px; margin-top: 15px; border-bottom: 1px dashed #ffd700; padding-bottom: 2px; opacity: 0.8; pointer-events: auto; }
         #chirp-display { position: absolute; top: 70px; width: 100%; text-align: center; color: #ffd700; font-size: 26px; font-style: italic; z-index: 20; text-shadow: 2px 2px 8px #000; opacity: 0; transition: opacity 0.3s; pointer-events: none; font-weight: bold; }
         .show-chirp { opacity: 1 !important; }
-        #ad-popup { position: absolute; top: 20%; background: rgba(255,255,255,0.95); padding: 15px; border-radius: 15px; display: none; z-index: 50; border: 4px solid #ffd700; }
+        #ad-popup { position: absolute; top: 20%; background: rgba(255,255,255,0.95); padding: 15px; border-radius: 15px; display: none; z-index: 50; border: 4px solid #ffd700; max-width: 200px; pointer-events: none; }
     </style>
 </head>
 <body>
 
     <div id="chirp-display">Beauty!</div>
-    <div id="ad-popup"><img src="sponsor-logo.png" style="height: 120px;"></div>
+    <div id="ad-popup"><img src="sponsor-logo.png" style="width: 100%;"></div>
 
     <div id="start-screen" class="overlay">
         <h1 style="color: #ffd700; font-size: 40px; margin:0;">BEAVER BUFFER</h1>
-        <p>Clear 85% of the ice to level up, Bud!</p>
+        <p>Clear 85% of the ice. Give 'er, bud!</p>
         <button id="start-btn">GIVE 'ER, EH?</button>
     </div>
 
@@ -40,7 +48,7 @@
         <h2 style="color: #ff4d4d; margin-bottom: 5px;">TOUGH LUCK, HOSER!</h2>
         <p id="fail-stats" style="font-size: 24px; color: #ffd700; margin: 10px 0;"></p>
         <button onclick="location.reload()">TRY AGAIN</button>
-        <a href="https://www.thetreenis.com" target="_blank" class="secondary-link">Visit the Treenis Pro Shop</a>
+        <a href="https://www.thetreenis.com" target="_blank" class="secondary-link" onclick="gtag('event', 'fail_shop_click')">Visit the Treenis Pro Shop</a>
     </div>
 
     <div id="level-intro" class="overlay" style="display:none;">
@@ -52,7 +60,7 @@
     <div id="victory-screen" class="overlay" style="display:none;">
         <h1 style="color: #ffd700;">ICE LEGEND!</h1>
         <img src="reward.png" style="width: 80%; max-width: 400px; border-radius: 15px; border: 4px solid #ffd700; margin-bottom:10px;">
-        <a href="https://www.thetreenis.com" target="_blank" style="color: #ffd700; font-size: 22px; text-decoration:none;">WWW.THETREENIS.COM</a>
+        <a href="https://www.thetreenis.com" target="_blank" style="color: #ffd700; font-size: 22px; text-decoration:none;" onclick="gtag('event', 'win_shop_click')">WWW.THETREENIS.COM</a>
         <button onclick="location.reload()" style="margin-top:15px;">PLAY AGAIN</button>
     </div>
 
@@ -75,19 +83,10 @@
     let cleanedTiles = new Set(), lastMilestone = 0, speedBoost = 0.28;
     const GRID_SIZE = 22;
 
-    // THE FULL CHIRP LIST
-    const phrases = [
-        "Beauty!", "Give 'er!", "Out fer a rip!", "Poutine power!", "Holy Dinah!", 
-        "Absolute weapon!", "Certified Beauty!", "Right on, bud!", "Keep your stick on the ice!",
-        "What a tilly!", "Wheel, snipe, celebrate!", "Top shelf where grandma keeps the cookies!",
-        "Full send!", "Don't be a hoser!", "Just a lick o' paint!", "Straight cheddar!", 
-        "Clap bombs, f**k moms!", "Ferda!", "Silky mitts!", "Great hustle!", "Real gully!"
-    ];
+    const phrases = ["Beauty!", "Give 'er!", "Out fer a rip!", "Poutine power!", "Holy Dinah!", "Absolute weapon!", "Certified Beauty!", "What a tilly!", "Top shelf!", "Ferda!", "Silky mitts!", "Full send!", "Don't be a hoser!", "Just a lick o' paint!", "Straight cheddar!", "Real gully!", "Keep your stick on the ice!", "Wheel, snipe, celebrate!"];
 
     function doVibrate(ms) {
-        if (window.navigator && window.navigator.vibrate) {
-            window.navigator.vibrate(ms);
-        }
+        if (window.navigator && window.navigator.vibrate) { window.navigator.vibrate(ms); }
     }
 
     function preload() {
@@ -109,6 +108,7 @@
         particles = this.add.particles(0, 0, 'flare', { speed: 20, scale: { start: 0.1, end: 0 }, blendMode: 'ADD', lifespan: 300, frequency: 10, emitting: false }).setDepth(1);
         
         document.getElementById('start-btn').onclick = () => {
+            gtag('event', 'game_start');
             document.getElementById('start-screen').style.display = 'none';
             doVibrate(50);
             gameStarted = true;
@@ -137,7 +137,7 @@
         p.body.setCircle(150);
         p.setVelocity(vx, vy);
         particles.startFollow(p);
-        triggerChirp("🚨 SLAPSHOT! 🚨");
+        triggerChirp("🚨 SLAPSHOT! 🚨"); // RESTORED
         doVibrate(20);
     }
 
@@ -160,7 +160,6 @@
                 let target = (currentLevel === 1) ? 380 : 480;
                 let pct = Math.floor((cleanedTiles.size/target)*100);
                 document.getElementById('score').innerText = `${Math.min(100, pct)}%`;
-                
                 if (cleanedTiles.size % 2 === 0) doVibrate(8);
 
                 if (pct >= lastMilestone + 10 && pct <= 100) {
@@ -186,6 +185,7 @@
                 timeLeft -= 0.04;
                 doVibrate(30);
             }
+            // SPONSOR LOGO LOGIC
             if (beaver.y < 400) document.getElementById('ad-popup').style.display = 'block';
             else document.getElementById('ad-popup').style.display = 'none';
         }
@@ -205,15 +205,25 @@
     function handleEnd() {
         gameStarted = false;
         if (puckSpawner) puckSpawner.remove();
-        let finalScore = document.getElementById('score').innerText;
-        let scoreVal = parseInt(finalScore);
+        let finalScoreStr = document.getElementById('score').innerText;
+        let scoreVal = parseInt(finalScoreStr);
         doVibrate(200);
+
         if (scoreVal < 85) {
-            document.getElementById('fail-stats').innerText = `You polished ${finalScore} of the ice!`;
+            gtag('event', 'level_fail', { 'level': currentLevel, 'score': scoreVal });
+            document.getElementById('fail-stats').innerText = `You polished ${finalScoreStr} of the ice!`;
             document.getElementById('fail-screen').style.display = 'flex';
             return;
         }
-        if (currentLevel === 3) { document.getElementById('victory-screen').style.display = 'flex'; return; }
+        
+        // 100% SHOUT OUT & VICTORY LOGIC
+        if (currentLevel === 3) { 
+            gtag('event', 'game_complete', { 'final_score': scoreVal });
+            document.getElementById('victory-screen').style.display = 'flex'; 
+            return; 
+        }
+        
+        gtag('event', 'level_clear', { 'level': currentLevel, 'score': scoreVal });
         document.getElementById('level-intro').style.display = 'flex';
         const body = document.getElementById('intro-body');
         let bonus = (scoreVal >= 100) ? "<div style='color:#ffd700; border:2px dashed #ffd700; padding:10px; margin-bottom:15px;'>🇨🇦 HOLY DINAH! 100% CLEAN! 🇨🇦</div>" : "";
@@ -222,7 +232,9 @@
 
     function proceedToLevel() {
         document.getElementById('level-intro').style.display = 'none';
-        currentLevel++; lastMilestone = 0;
+        currentLevel++; 
+        gtag('event', 'level_start', { 'level': currentLevel });
+        lastMilestone = 0;
         timeLeft = (currentLevel === 2) ? 50 : 45;
         cleanedTiles.clear();
         rt.clear(); rt.fill(0xcceeff, 0.9);
