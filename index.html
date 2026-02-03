@@ -10,11 +10,10 @@
         #ui-layer { position: absolute; top: 15px; width: 90%; display: flex; justify-content: space-between; color: #fff; pointer-events: none; z-index: 10; font-size: 24px; text-shadow: 2px 2px 4px #000; }
         .stat-label { font-size: 10px; display: block; color: #ffd700; text-transform: uppercase; }
         .overlay { position: absolute; width: 100%; height: 100%; background: rgba(0,31,63,0.95); z-index: 100; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; box-sizing: border-box; }
-        button { padding: 15px 35px; font-size: 20px; font-weight: bold; cursor: pointer; border-radius: 50px; border: none; background: #ffd700; color: #001f3f; }
-        #ad-popup { 
-            position: absolute; top: 20%; background: rgba(255,255,255,0.95); padding: 15px; 
-            border-radius: 15px; display: none; z-index: 50; border: 4px solid #ffd700;
-        }
+        button { padding: 15px 35px; font-size: 20px; font-weight: bold; cursor: pointer; border-radius: 50px; border: none; background: #ffd700; color: #001f3f; transition: transform 0.2s; }
+        button:active { transform: scale(0.95); }
+        #ad-popup { position: absolute; top: 20%; background: rgba(255,255,255,0.95); padding: 15px; border-radius: 15px; display: none; z-index: 50; border: 4px solid #ffd700; }
+        a { color: #ffd700; text-decoration: none; font-size: 22px; margin-top: 10px; display: block; }
     </style>
 </head>
 <body>
@@ -22,22 +21,30 @@
     <div id="ad-popup"><img src="sponsor-logo.png" style="height: 120px;"></div>
 
     <div id="start-screen" class="overlay">
-        <h1 style="color: #ffd700;">BEAVER BUFFER</h1>
-        <p>Grab your rake and give the pond a scrape, bud!</p>
+        <h1 style="color: #ffd700; font-size: 40px; margin: 0;">BEAVER BUFFER</h1>
+        <p>Clear 85% of the ice before the timer runs out!</p>
         <button onclick="startGame()">GIVE 'ER, EH?</button>
     </div>
 
     <div id="level-intro" class="overlay" style="display:none;">
         <h2 id="intro-title" style="color: #ffd700;">BEAUTY!</h2>
         <div id="intro-body" style="margin: 20px 0;"></div>
-        <button id="next-btn" onclick="proceedToLevel()">LET'S GO!</button>
+        <button onclick="proceedToLevel()">KEEP GOIN'!</button>
+    </div>
+
+    <div id="fail-screen" class="overlay" style="display:none;">
+        <h2 style="color: #ff4d4d;">OH, HOSER!</h2>
+        <p>You didn't polish enough ice. The team is gonna be mad!</p>
+        <button onclick="location.reload()">TRY AGAIN, BUD</button>
     </div>
 
     <div id="victory-screen" class="overlay" style="display:none;">
         <h1 style="color: #ffd700;">ICE LEGEND!</h1>
-        <p>The job is done, bud. Time for a celebratory syrup!</p>
-        <img src="reward.png" style="width: 80%; max-width: 400px; border-radius: 15px; margin: 15px 0;">
-        <button onclick="location.reload()">PLAY AGAIN</button>
+        <p>You cleared the way for the team!</p>
+        <img src="reward.png" style="width: 80%; max-width: 400px; border-radius: 15px; margin: 10px 0; border: 4px solid #ffd700;">
+        <p style="font-size: 14px; margin-bottom: 5px;">PROUDLY SPONSORED BY</p>
+        <a href="https://www.thetreenis.com" target="_blank">WWW.THETREENIS.COM</a>
+        <button onclick="location.reload()" style="margin-top: 20px;">PLAY AGAIN</button>
     </div>
 
     <div id="ui-layer">
@@ -73,13 +80,12 @@
         currentMask = new Phaser.Geom.Ellipse(400, 520, 720, 460);
         beaver = this.physics.add.sprite(400, 520, 'beaver').setScale(0.25).setDepth(2);
         goose = this.physics.add.sprite(-500, -500, 'goose').setScale(0.12);
-        
         pucks = this.physics.add.group();
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
 
     function playCrunch() {
-        if (!audioCtx) return;
+        if (!audioCtx || audioCtx.state !== 'running') return;
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         osc.frequency.setValueAtTime(120, audioCtx.currentTime);
@@ -110,9 +116,8 @@
             if (!cleanedTiles.has(tileId)) {
                 cleanedTiles.add(tileId);
                 rt.erase('beaver', beaver.x, beaver.y);
-                let targetTiles = (currentLevel === 1) ? 350 : 450;
-                let progress = (cleanedTiles.size / targetTiles) * 100;
-                document.getElementById('score').innerText = `${Math.min(100, Math.floor(progress))}%`;
+                let target = (currentLevel === 1) ? 350 : 450;
+                document.getElementById('score').innerText = `${Math.min(100, Math.floor((cleanedTiles.size/target)*100))}%`;
                 playCrunch();
                 if (window.navigator.vibrate) window.navigator.vibrate(8);
             }
@@ -141,7 +146,10 @@
     function handleEnd() {
         gameStarted = false;
         let score = parseInt(document.getElementById('score').innerText);
-        if (score < 85) { alert("Not enough polish! Try again, bud."); location.reload(); return; }
+        if (score < 85) {
+            document.getElementById('fail-screen').style.display = 'flex';
+            return;
+        }
         
         if (currentLevel === 3) {
             document.getElementById('victory-screen').style.display = 'flex';
@@ -168,10 +176,10 @@
             goose.setPosition(100, 300);
         } else if (currentLevel === 3) {
             scene.bg.setTexture('arena'); 
-            beaver.setTexture('beaver-pro').setScale(0.22); // SHRINKING BUCK
+            beaver.setTexture('beaver-pro').setScale(0.22);
             currentMask = new Phaser.Geom.Rectangle(40, 180, 720, 580);
             goose.setPosition(-900, -900);
-            for(let i=0; i<3; i++) { // TRIPLE PUCKS
+            for(let i=0; i<3; i++) {
                 let p = pucks.create(200 + (i*200), 400, 'puck').setScale(0.12).setBounce(1);
                 p.setVelocity(300 + (i*50), 300 - (i*50));
             }
