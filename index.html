@@ -10,18 +10,29 @@
         #ui-layer { position: absolute; top: 15px; width: 90%; display: flex; justify-content: space-between; color: #fff; pointer-events: none; z-index: 10; font-size: 24px; text-shadow: 2px 2px 4px #000; }
         .stat-label { font-size: 10px; display: block; color: #ffd700; text-transform: uppercase; }
         .overlay { position: absolute; width: 100%; height: 100%; background: rgba(0,31,63,0.95); z-index: 100; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; box-sizing: border-box; }
-        button { padding: 15px 35px; font-size: 20px; font-weight: bold; cursor: pointer; border-radius: 50px; border: none; background: #ffd700; color: #001f3f; }
+        button { padding: 15px 35px; font-size: 20px; font-weight: bold; cursor: pointer; border-radius: 50px; border: none; background: #ffd700; color: #001f3f; transition: transform 0.1s; }
+        button:active { transform: scale(0.9); }
+        
+        #chirp-display { 
+            position: absolute; top: 70px; width: 100%; text-align: center; 
+            color: #ffd700; font-size: 26px; font-style: italic; z-index: 20; 
+            text-shadow: 2px 2px 8px #000; opacity: 0; transition: opacity 0.3s;
+            pointer-events: none; font-weight: bold;
+        }
+        .show-chirp { opacity: 1 !important; }
+
         #ad-popup { position: absolute; top: 20%; background: rgba(255,255,255,0.95); padding: 15px; border-radius: 15px; display: none; z-index: 50; border: 4px solid #ffd700; }
         #victory-screen a { color: #ffd700; text-decoration: none; font-size: 22px; display: block; margin: 10px 0; }
     </style>
 </head>
 <body>
 
+    <div id="chirp-display">Beauty!</div>
     <div id="ad-popup"><img src="sponsor-logo.png" style="height: 120px;"></div>
 
     <div id="start-screen" class="overlay">
-        <h1 style="color: #ffd700; font-size: 40px;">BEAVER BUFFER</h1>
-        <p>Give 'er, bud! Clear 85% to pass.</p>
+        <h1 style="color: #ffd700; font-size: 40px; margin:0;">BEAVER BUFFER</h1>
+        <p>Clear 85% of the ice to advance. Give 'er, bud!</p>
         <button onclick="startGame()">GIVE 'ER, EH?</button>
     </div>
 
@@ -33,15 +44,16 @@
 
     <div id="fail-screen" class="overlay" style="display:none;">
         <h2 style="color: #ff4d4d;">OH, HOSER!</h2>
-        <p>The ice is still a mess. Try again!</p>
+        <p>The ice is still a mess. The boys are gonna chirp ya!</p>
         <button onclick="location.reload()">TRY AGAIN</button>
     </div>
 
     <div id="victory-screen" class="overlay" style="display:none;">
         <h1 style="color: #ffd700;">ICE LEGEND!</h1>
-        <img src="reward.png" style="width: 80%; max-width: 400px; border-radius: 15px; border: 4px solid #ffd700;">
+        <img src="reward.png" style="width: 80%; max-width: 400px; border-radius: 15px; border: 4px solid #ffd700; margin-bottom:10px;">
+        <p style="font-size:12px; margin:0;">PROUDLY SPONSORED BY</p>
         <a href="https://www.thetreenis.com" target="_blank">WWW.THETREENIS.COM</a>
-        <button onclick="location.reload()">PLAY AGAIN</button>
+        <button onclick="location.reload()" style="margin-top:15px;">PLAY AGAIN</button>
     </div>
 
     <div id="ui-layer">
@@ -58,12 +70,18 @@
     };
 
     const game = new Phaser.Game(config);
-    let beaver, rt, currentMask, goose, pucks, audioCtx, chirpText, particles;
+    let beaver, rt, currentMask, goose, pucks, audioCtx, particles;
     let timeLeft = 30, gameStarted = false, currentLevel = 1;
     let cleanedTiles = new Set(), lastMilestone = 0, speedBoost = 0.25;
     const GRID_SIZE = 25;
 
-    const phrases = ["Beauty!", "Give 'er!", "Right on!", "Hoser!", "Sharp, eh?", "Full send!", "Nice sheet!", "Canadian Gold!"];
+    const phrases = [
+        "Just a lick o' paint!", "Keep your stick on the ice!", "Right on, bud!", 
+        "Lookin' sharp, eh?", "Beauty!", "Give 'er!", "Out fer a rip!", 
+        "Hoser's workin' hard!", "Poutine power!", "Full send!", 
+        "Holy Dinah!", "Absolute weapon!", "Wheel, snipe, celebrate!", 
+        "Doin' the Lord's work!", "Puck-tastic!", "Certified Beauty!"
+    ];
 
     function preload() {
         this.load.image('pond', 'pond.jpg'); this.load.image('rink', 'rink.jpg'); this.load.image('arena', 'arena.jpg');
@@ -80,20 +98,23 @@
         currentMask = new Phaser.Geom.Ellipse(400, 520, 720, 460);
         
         beaver = this.physics.add.sprite(400, 520, 'beaver').setScale(0.25).setDepth(5);
-        chirpText = this.add.text(0, 0, '', { font: 'bold 24px Arial', fill: '#ffd700', stroke: '#000', strokeThickness: 4 });
-        chirpText.setOrigin(0.5).setAlpha(0).setDepth(10);
-
         goose = this.physics.add.sprite(-500, -500, 'goose').setScale(0.12);
         pucks = this.physics.add.group();
         
-        // PUCK STREAK EMITTER
         particles = this.add.particles(0, 0, 'flare', {
             speed: 20, scale: { start: 0.1, end: 0 },
-            blendMode: 'ADD', lifespan: 300, frequency: 10,
-            emitting: false
+            blendMode: 'ADD', lifespan: 300, frequency: 10, emitting: false
         }).setDepth(1);
 
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    function triggerChirp(customText) {
+        const display = document.getElementById('chirp-display');
+        display.innerText = customText || phrases[Math.floor(Math.random() * phrases.length)];
+        display.classList.add('show-chirp');
+        const duration = customText ? 3000 : 2000;
+        setTimeout(() => display.classList.remove('show-chirp'), duration);
     }
 
     function playCrunch() {
@@ -108,14 +129,6 @@
         osc.start(); osc.stop(audioCtx.currentTime + 0.1);
     }
 
-    function triggerChirp() {
-        chirpText.setText(phrases[Math.floor(Math.random() * phrases.length)]);
-        chirpText.setAlpha(1);
-        this.tweens.add({
-            targets: chirpText, y: beaver.y - 120, alpha: 0, duration: 1000
-        });
-    }
-
     function startGame() {
         document.getElementById('start-screen').style.display = 'none';
         if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -126,9 +139,6 @@
         if (!gameStarted) return;
         timeLeft -= delta / 1000;
         document.getElementById('timer').innerText = Math.max(0, Math.ceil(timeLeft));
-
-        chirpText.x = beaver.x;
-        if (chirpText.alpha === 0) chirpText.y = beaver.y - 60;
 
         let pointer = this.input.activePointer;
         if (pointer.isDown && currentMask.contains(pointer.x, pointer.y)) {
@@ -148,17 +158,22 @@
                 
                 if (pct >= lastMilestone + 10 && pct <= 100) {
                     lastMilestone = Math.floor(pct / 10) * 10;
-                    triggerChirp.call(game.scene.scenes[0]);
                     
-                    // LEVEL 2 HELP: Boost speed at 50%
+                    // Boost Announcements
                     if(currentLevel === 2 && pct === 50) {
-                        speedBoost = 0.5;
-                        beaver.setTint(0x00ff00);
+                        triggerChirp("🍟 POUTINE POWER! SPEED BOOST! 🍟");
+                        speedBoost = 0.5; beaver.setTint(0x00ff00);
+                        setTimeout(() => { speedBoost = 0.25; beaver.clearTint(); }, 4000);
+                    } else if (currentLevel === 2 && pct === 80) {
+                        triggerChirp("🏒 SECOND WIND! GIVE 'ER! 🏒");
+                        speedBoost = 0.45; beaver.setTint(0xffff00);
                         setTimeout(() => { speedBoost = 0.25; beaver.clearTint(); }, 3000);
+                    } else {
+                        triggerChirp();
                     }
                 }
                 playCrunch();
-                if (window.navigator.vibrate) window.navigator.vibrate(10);
+                if (window.navigator && window.navigator.vibrate) window.navigator.vibrate(10);
             }
         }
 
@@ -179,6 +194,7 @@
                 if (Phaser.Geom.Intersects.RectangleToRectangle(beaver.getBounds(), p.getBounds())) {
                     timeLeft -= 0.15;
                     this.cameras.main.shake(100, 0.01);
+                    if (window.navigator.vibrate) window.navigator.vibrate([30, 30, 30]);
                 }
             });
         }
@@ -194,8 +210,9 @@
         document.getElementById('level-intro').style.display = 'flex';
         const body = document.getElementById('intro-body');
         let bonus = (score >= 100) ? "<div style='color:#ffd700; border:2px dashed #ffd700; padding:10px; margin-bottom:15px;'>🇨🇦 HOLY DINAH! 100% CLEAN! 🇨🇦</div>" : "";
-        if (currentLevel === 1) body.innerHTML = bonus + "Watch out for the <b>Cobra Chicken</b>!";
-        else body.innerHTML = bonus + "Big Leagues! Dodge the pucks, bud!";
+        
+        if (currentLevel === 1) body.innerHTML = bonus + "Off to the Local Rink! Watch for the <b>Cobra Chicken</b>!";
+        else body.innerHTML = bonus + "Big Leagues! Dodge the high-speed pucks, bud!";
     }
 
     function proceedToLevel() {
@@ -215,7 +232,7 @@
             scene.bg.setTexture('arena'); beaver.setTexture('beaver-pro').setScale(0.22);
             currentMask = new Phaser.Geom.Rectangle(40, 180, 720, 580);
             goose.setPosition(-900, -900);
-            particles.start(); // ACTIVATE STREAKS
+            particles.start();
             for(let i=0; i<3; i++) {
                 let p = pucks.create(200 + (i*200), 400, 'puck').setScale(0.12).setBounce(1);
                 p.setVelocity(300 + (i*50), 300 - (i*50));
