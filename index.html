@@ -25,7 +25,7 @@
 
     <div id="start-screen" class="overlay">
         <h1 style="color: #ffd700; font-size: 40px; margin:0;">BEAVER BUFFER</h1>
-        <p>Clear 85% of the ice to advance bud!</p>
+        <p>Clear 85% of the ice to level up bud!</p>
         <button onclick="startGame()">GIVE 'ER, EH?</button>
     </div>
 
@@ -68,7 +68,7 @@
     let cleanedTiles = new Set(), lastMilestone = 0, speedBoost = 0.28;
     const GRID_SIZE = 22;
 
-    const phrases = ["Just a lick o' paint!", "Keep your stick on the ice!", "Right on, bud!", "Beauty!", "Give 'er!", "Out fer a rip!", "Poutine power!", "Full send!", "Holy Dinah!", "Absolute weapon!", "Doin' the Lord's work!", "Certified Beauty!"];
+    const phrases = ["Beauty!", "Give 'er!", "Out fer a rip!", "Poutine power!", "Holy Dinah!", "Absolute weapon!", "Certified Beauty!"];
 
     function preload() {
         this.load.image('pond', 'pond.jpg'); this.load.image('rink', 'rink.jpg'); this.load.image('arena', 'arena.jpg');
@@ -93,8 +93,7 @@
         const display = document.getElementById('chirp-display');
         display.innerText = customText || phrases[Math.floor(Math.random() * phrases.length)];
         display.classList.add('show-chirp');
-        const duration = customText ? 3000 : 2000;
-        setTimeout(() => display.classList.remove('show-chirp'), duration);
+        setTimeout(() => display.classList.remove('show-chirp'), customText ? 3000 : 2000);
     }
 
     function spawnPuck() {
@@ -105,10 +104,13 @@
         else if (side === 1) { x = 750; y = 400; vx = -350; vy = Phaser.Math.Between(-200, 200); }
         else if (side === 2) { x = 400; y = 750; vx = Phaser.Math.Between(-200, 200); vy = -350; }
         else { x = 50; y = 400; vx = 350; vy = Phaser.Math.Between(-200, 200); }
-        let p = pucks.create(x, y, 'puck').setScale(0.12).setBounce(1).setCollideWorldBounds(true);
+        
+        // Level 3 Shrunken Pucks (0.08 scale)
+        let p = pucks.create(x, y, 'puck').setScale(0.08).setBounce(1).setCollideWorldBounds(true);
+        p.body.setCircle(150); // Tight hitbox
         p.setVelocity(vx, vy);
         particles.startFollow(p);
-        triggerChirp("🚨 HEADS UP! 🚨");
+        triggerChirp("🚨 SLAPSHOT! 🚨");
     }
 
     function startGame() {
@@ -130,12 +132,11 @@
             let tileId = `${tx}_${ty}`;
             if (!cleanedTiles.has(tileId)) {
                 cleanedTiles.add(tileId);
-                rt.erase('beaver', beaver.x, beaver.y);
+                rt.erase(currentLevel === 3 ? 'beaver-pro' : 'beaver', beaver.x, beaver.y);
                 let target = (currentLevel === 1) ? 380 : 480;
                 let pct = Math.floor((cleanedTiles.size/target)*100);
                 document.getElementById('score').innerText = `${Math.min(100, pct)}%`;
                 
-                // Reinforce Vibration
                 if (window.navigator && window.navigator.vibrate) window.navigator.vibrate(12);
 
                 if (pct >= lastMilestone + 10 && pct <= 100) {
@@ -165,7 +166,7 @@
 
         if (currentLevel === 3) {
             pucks.children.iterate(p => {
-                if (Phaser.Geom.Intersects.RectangleToRectangle(beaver.getBounds(), p.getBounds())) {
+                if (Phaser.Geom.Intersects.CircleToRectangle(new Phaser.Geom.Circle(p.x, p.y, p.displayWidth/2), beaver.getBounds())) {
                     timeLeft -= 0.15;
                     this.cameras.main.shake(80, 0.008);
                     if (window.navigator.vibrate) window.navigator.vibrate([30, 30, 30]);
@@ -205,13 +206,15 @@
             currentMask = new Phaser.Geom.Rectangle(80, 240, 640, 480);
             goose.setPosition(100, 300);
         } else if (currentLevel === 3) {
-            scene.bg.setTexture('arena'); beaver.setTexture('beaver-pro').setScale(0.22);
+            scene.bg.setTexture('arena'); 
+            // Level 3 Shrunken Beaver (0.15 scale)
+            beaver.setTexture('beaver-pro').setScale(0.15);
             currentMask = new Phaser.Geom.Rectangle(40, 180, 720, 580);
             goose.setPosition(-900, -900);
             pucks.clear(true, true);
             particles.start();
             spawnPuck();
-            puckSpawner = scene.time.addEvent({ delay: 7000, callback: spawnPuck, callbackScope: scene, loop: true });
+            puckSpawner = scene.time.addEvent({ delay: 6000, callback: spawnPuck, callbackScope: scene, loop: true });
         }
         gameStarted = true;
     }
