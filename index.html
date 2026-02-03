@@ -40,7 +40,7 @@
 
     <div id="start-screen" class="overlay">
         <h1 style="color: #ffd700; font-size: 40px; margin:0;">BEAVER BUFFER</h1>
-        <p>Clear 85% of the ice. Give 'er, bud!</p>
+        <p>Clear 85% of the ice to level up, bud!</p>
         <button id="start-btn">GIVE 'ER, EH?</button>
     </div>
 
@@ -83,8 +83,44 @@
     let cleanedTiles = new Set(), lastMilestone = 0, speedBoost = 0.28;
     const GRID_SIZE = 22;
 
-    const phrases = ["Beauty!", "Give 'er!", "Out fer a rip!", "Poutine power!", "Holy Dinah!", "Absolute weapon!", "Certified Beauty!", "What a tilly!", "Top shelf!", "Ferda!", "Silky mitts!", "Full send!", "Don't be a hoser!", "Just a lick o' paint!", "Straight cheddar!", "Real gully!", "Keep your stick on the ice!", "Wheel, snipe, celebrate!"];
-
+    // THE ULTIMATE CANADIAN CHIRP LIST
+    const phrases = [
+        "Beauty!", 
+        "Give 'er!", 
+        "Out fer a rip!", 
+        "Poutine power!", 
+        "Holy Dinah!", 
+        "Absolute weapon!", 
+        "Certified Beauty!", 
+        "Right on, bud!", 
+        "Keep your stick on the ice!",
+        "What a tilly!", 
+        "Wheel, snipe, celebrate!", 
+        "Top shelf where grandma keeps the cookies!",
+        "Full send!", 
+        "Don't be a hoser!", 
+        "Just a lick o' paint!", 
+        "Straight cheddar!", 
+        "Clap bombs, f**k moms!", 
+        "Ferda!", 
+        "Silky mitts!", 
+        "Great hustle!", 
+        "Real gully!",
+        "Double-double energy!",
+        "Heads up, puck's live!",
+        "Pucks in deep!",
+        "Game stick for you!",
+        "Absolute clinic!",
+        "Skate it off!",
+        "Breezers are looking sharp!",
+        "What a beaut!",
+        "Bardown or bust!",
+        "Doin' the Lord's work!",
+        "Cleanest ice in the county!",
+        "You're a legend, eh?",
+        "Harder than a frozen puck!",
+        "Look at the hands on this guy!"
+    ];
     function doVibrate(ms) {
         if (window.navigator && window.navigator.vibrate) { window.navigator.vibrate(ms); }
     }
