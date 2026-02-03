@@ -10,19 +10,15 @@
         #ui-layer { position: absolute; top: 15px; width: 90%; display: flex; justify-content: space-between; color: #fff; pointer-events: none; z-index: 10; font-size: 24px; text-shadow: 2px 2px 4px #000; }
         .stat-label { font-size: 10px; display: block; color: #ffd700; text-transform: uppercase; }
         .overlay { position: absolute; width: 100%; height: 100%; background: rgba(0,31,63,0.95); z-index: 100; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; box-sizing: border-box; }
-        button { padding: 15px 35px; font-size: 20px; font-weight: bold; cursor: pointer; border-radius: 50px; border: none; background: #ffd700; color: #001f3f; transition: transform 0.1s; }
-        button:active { transform: scale(0.9); }
         
-        #chirp-display { 
-            position: absolute; top: 70px; width: 100%; text-align: center; 
-            color: #ffd700; font-size: 26px; font-style: italic; z-index: 20; 
-            text-shadow: 2px 2px 8px #000; opacity: 0; transition: opacity 0.3s;
-            pointer-events: none; font-weight: bold;
-        }
+        /* Themed Buttons */
+        button { padding: 15px 35px; font-size: 20px; font-weight: bold; cursor: pointer; border-radius: 50px; border: none; background: #ffd700; color: #001f3f; transition: transform 0.1s; margin: 10px; }
+        button:active { transform: scale(0.9); }
+        .secondary-link { color: #ffd700; text-decoration: none; font-size: 16px; margin-top: 15px; border-bottom: 1px dashed #ffd700; padding-bottom: 2px; opacity: 0.8; }
+        
+        #chirp-display { position: absolute; top: 70px; width: 100%; text-align: center; color: #ffd700; font-size: 26px; font-style: italic; z-index: 20; text-shadow: 2px 2px 8px #000; opacity: 0; transition: opacity 0.3s; pointer-events: none; font-weight: bold; }
         .show-chirp { opacity: 1 !important; }
-
         #ad-popup { position: absolute; top: 20%; background: rgba(255,255,255,0.95); padding: 15px; border-radius: 15px; display: none; z-index: 50; border: 4px solid #ffd700; }
-        #victory-screen a { color: #ffd700; text-decoration: none; font-size: 22px; display: block; margin: 10px 0; }
     </style>
 </head>
 <body>
@@ -32,8 +28,16 @@
 
     <div id="start-screen" class="overlay">
         <h1 style="color: #ffd700; font-size: 40px; margin:0;">BEAVER BUFFER</h1>
-        <p>Clear 85% of the ice to advance. Give 'er, bud!</p>
+        <p>Clear 85% of the ice to advance, bud!</p>
         <button onclick="startGame()">GIVE 'ER, EH?</button>
+    </div>
+
+    <div id="fail-screen" class="overlay" style="display:none;">
+        <h2 style="color: #ff4d4d; margin-bottom: 5px;">TOUGH LUCK, HOSER!</h2>
+        <p id="fail-stats" style="font-size: 24px; color: #ffd700; margin: 10px 0;"></p>
+        <p style="max-width: 300px; font-size: 14px;">The team needs 85% to play. Grab a double-double and try again.</p>
+        <button onclick="location.reload()">TRY AGAIN</button>
+        <a href="https://www.thetreenis.com" target="_blank" class="secondary-link">Visit the Treenis Pro Shop</a>
     </div>
 
     <div id="level-intro" class="overlay" style="display:none;">
@@ -42,17 +46,11 @@
         <button onclick="proceedToLevel()">NEXT RINK</button>
     </div>
 
-    <div id="fail-screen" class="overlay" style="display:none;">
-        <h2 style="color: #ff4d4d;">OH, HOSER!</h2>
-        <p>The ice is still a mess. The boys are gonna chirp ya!</p>
-        <button onclick="location.reload()">TRY AGAIN</button>
-    </div>
-
     <div id="victory-screen" class="overlay" style="display:none;">
         <h1 style="color: #ffd700;">ICE LEGEND!</h1>
         <img src="reward.png" style="width: 80%; max-width: 400px; border-radius: 15px; border: 4px solid #ffd700; margin-bottom:10px;">
-        <p style="font-size:12px; margin:0;">PROUDLY SPONSORED BY</p>
-        <a href="https://www.thetreenis.com" target="_blank">WWW.THETREENIS.COM</a>
+        <p>You cleared the way! Celebs all round!</p>
+        <a href="https://www.thetreenis.com" target="_blank" style="color: #ffd700; font-size: 22px; text-decoration:none;">WWW.THETREENIS.COM</a>
         <button onclick="location.reload()" style="margin-top:15px;">PLAY AGAIN</button>
     </div>
 
@@ -75,13 +73,7 @@
     let cleanedTiles = new Set(), lastMilestone = 0, speedBoost = 0.25;
     const GRID_SIZE = 25;
 
-    const phrases = [
-        "Just a lick o' paint!", "Keep your stick on the ice!", "Right on, bud!", 
-        "Lookin' sharp, eh?", "Beauty!", "Give 'er!", "Out fer a rip!", 
-        "Hoser's workin' hard!", "Poutine power!", "Full send!", 
-        "Holy Dinah!", "Absolute weapon!", "Wheel, snipe, celebrate!", 
-        "Doin' the Lord's work!", "Puck-tastic!", "Certified Beauty!"
-    ];
+    const phrases = ["Just a lick o' paint!", "Keep your stick on the ice!", "Right on, bud!", "Beauty!", "Give 'er!", "Out fer a rip!", "Poutine power!", "Full send!", "Holy Dinah!", "Absolute weapon!", "Doin' the Lord's work!", "Certified Beauty!"];
 
     function preload() {
         this.load.image('pond', 'pond.jpg'); this.load.image('rink', 'rink.jpg'); this.load.image('arena', 'arena.jpg');
@@ -96,16 +88,10 @@
         rt = this.make.renderTexture({ width: 800, height: 800 }, false);
         rt.fill(0xcceeff, 0.9);
         currentMask = new Phaser.Geom.Ellipse(400, 520, 720, 460);
-        
         beaver = this.physics.add.sprite(400, 520, 'beaver').setScale(0.25).setDepth(5);
         goose = this.physics.add.sprite(-500, -500, 'goose').setScale(0.12);
         pucks = this.physics.add.group();
-        
-        particles = this.add.particles(0, 0, 'flare', {
-            speed: 20, scale: { start: 0.1, end: 0 },
-            blendMode: 'ADD', lifespan: 300, frequency: 10, emitting: false
-        }).setDepth(1);
-
+        particles = this.add.particles(0, 0, 'flare', { speed: 20, scale: { start: 0.1, end: 0 }, blendMode: 'ADD', lifespan: 300, frequency: 10, emitting: false }).setDepth(1);
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
 
@@ -144,22 +130,17 @@
         if (pointer.isDown && currentMask.contains(pointer.x, pointer.y)) {
             beaver.x = Phaser.Math.Linear(beaver.x, pointer.x, speedBoost);
             beaver.y = Phaser.Math.Linear(beaver.y, pointer.y, speedBoost);
-            
             let tx = Math.floor(beaver.x / GRID_SIZE);
             let ty = Math.floor(beaver.y / GRID_SIZE);
             let tileId = `${tx}_${ty}`;
-            
             if (!cleanedTiles.has(tileId)) {
                 cleanedTiles.add(tileId);
                 rt.erase('beaver', beaver.x, beaver.y);
                 let target = (currentLevel === 1) ? 350 : 450;
                 let pct = Math.floor((cleanedTiles.size/target)*100);
                 document.getElementById('score').innerText = `${Math.min(100, pct)}%`;
-                
                 if (pct >= lastMilestone + 10 && pct <= 100) {
                     lastMilestone = Math.floor(pct / 10) * 10;
-                    
-                    // Boost Announcements
                     if(currentLevel === 2 && pct === 50) {
                         triggerChirp("🍟 POUTINE POWER! SPEED BOOST! 🍟");
                         speedBoost = 0.5; beaver.setTint(0x00ff00);
@@ -168,9 +149,7 @@
                         triggerChirp("🏒 SECOND WIND! GIVE 'ER! 🏒");
                         speedBoost = 0.45; beaver.setTint(0xffff00);
                         setTimeout(() => { speedBoost = 0.25; beaver.clearTint(); }, 3000);
-                    } else {
-                        triggerChirp();
-                    }
+                    } else { triggerChirp(); }
                 }
                 playCrunch();
                 if (window.navigator && window.navigator.vibrate) window.navigator.vibrate(10);
@@ -179,10 +158,7 @@
 
         if (currentLevel === 2) {
             this.physics.moveToObject(goose, beaver, 145);
-            if (Phaser.Geom.Intersects.RectangleToRectangle(beaver.getBounds(), goose.getBounds())) {
-                timeLeft -= 0.05;
-                if (window.navigator.vibrate) window.navigator.vibrate(50);
-            }
+            if (Phaser.Geom.Intersects.RectangleToRectangle(beaver.getBounds(), goose.getBounds())) timeLeft -= 0.05;
             if (beaver.y < 400) document.getElementById('ad-popup').style.display = 'block';
             else document.getElementById('ad-popup').style.display = 'none';
         }
@@ -194,7 +170,6 @@
                 if (Phaser.Geom.Intersects.RectangleToRectangle(beaver.getBounds(), p.getBounds())) {
                     timeLeft -= 0.15;
                     this.cameras.main.shake(100, 0.01);
-                    if (window.navigator.vibrate) window.navigator.vibrate([30, 30, 30]);
                 }
             });
         }
@@ -203,21 +178,24 @@
 
     function handleEnd() {
         gameStarted = false;
-        let score = parseInt(document.getElementById('score').innerText);
-        if (score < 85) { document.getElementById('fail-screen').style.display = 'flex'; return; }
+        let finalScore = document.getElementById('score').innerText;
+        let scoreVal = parseInt(finalScore);
+        
+        if (scoreVal < 85) {
+            document.getElementById('fail-stats').innerText = `You polished ${finalScore} of the ice!`;
+            document.getElementById('fail-screen').style.display = 'flex';
+            return;
+        }
+        
         if (currentLevel === 3) { document.getElementById('victory-screen').style.display = 'flex'; return; }
-
         document.getElementById('level-intro').style.display = 'flex';
         const body = document.getElementById('intro-body');
-        let bonus = (score >= 100) ? "<div style='color:#ffd700; border:2px dashed #ffd700; padding:10px; margin-bottom:15px;'>🇨🇦 HOLY DINAH! 100% CLEAN! 🇨🇦</div>" : "";
-        
-        if (currentLevel === 1) body.innerHTML = bonus + "Off to the Local Rink! Watch for the <b>Cobra Chicken</b>!";
-        else body.innerHTML = bonus + "Big Leagues! Dodge the high-speed pucks, bud!";
+        let bonus = (scoreVal >= 100) ? "<div style='color:#ffd700; border:2px dashed #ffd700; padding:10px; margin-bottom:15px;'>🇨🇦 HOLY DINAH! 100% CLEAN! 🇨🇦</div>" : "";
+        body.innerHTML = bonus + (currentLevel === 1 ? "Watch out for the <b>Cobra Chicken</b>!" : "Big Leagues! Dodge the pucks, bud!");
     }
 
     function proceedToLevel() {
         document.getElementById('level-intro').style.display = 'none';
-        if (audioCtx.state === 'suspended') audioCtx.resume();
         currentLevel++; lastMilestone = 0;
         timeLeft = (currentLevel === 2) ? 45 : 40;
         cleanedTiles.clear();
