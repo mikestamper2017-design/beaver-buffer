@@ -6,7 +6,6 @@
     j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
     })(window,document,'script','dataLayer','GTM-5ZMG859S');</script>
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
@@ -32,24 +31,22 @@
     </style>
 </head>
 <body>
-<!-- Google Tag Manager (noscript) -->
-<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-5ZMG859S"
-height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-<!-- End Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-5ZMG859S"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div id="chirp-display">Beauty!</div>
     <div id="ad-popup"><img src="sponsor-logo.png" style="width: 100%;"></div>
 
     <div id="start-screen" class="overlay">
         <h1 style="color: #ffd700; font-size: 40px; margin:0;">BEAVER BUFFER</h1>
-        <p>Clear 85% of the ice to level up, bud!</p>
-        <button id="start-btn">GIVE 'ER, EH?</button>
+        <p>Clear 85% of the ice. Give 'er, eh?</p>
+        <button id="start-btn">GIVE 'ER, BUD!</button>
     </div>
 
     <div id="fail-screen" class="overlay" style="display:none;">
         <h2 style="color: #ff4d4d; margin-bottom: 5px;">TOUGH LUCK, HOSER!</h2>
         <p id="fail-stats" style="font-size: 24px; color: #ffd700; margin: 10px 0;"></p>
         <button onclick="location.reload()">TRY AGAIN</button>
-        <a href="https://www.thetreenis.com" target="_blank" class="secondary-link" onclick="gtag('event', 'fail_shop_click')">Visit the Treenis Pro Shop</a>
+        <a href="https://www.thetreenis.com" target="_blank" class="secondary-link">Visit the Treenis Pro Shop</a>
     </div>
 
     <div id="level-intro" class="overlay" style="display:none;">
@@ -61,7 +58,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div id="victory-screen" class="overlay" style="display:none;">
         <h1 style="color: #ffd700;">ICE LEGEND!</h1>
         <img src="reward.png" style="width: 80%; max-width: 400px; border-radius: 15px; border: 4px solid #ffd700; margin-bottom:10px;">
-        <a href="https://www.thetreenis.com" target="_blank" style="color: #ffd700; font-size: 22px; text-decoration:none;" onclick="gtag('event', 'win_shop_click')">WWW.THETREENIS.COM</a>
+        <a href="https://www.thetreenis.com" target="_blank" style="color: #ffd700; font-size: 22px; text-decoration:none;">WWW.THETREENIS.COM</a>
         <button onclick="location.reload()" style="margin-top:15px;">PLAY AGAIN</button>
     </div>
 
@@ -84,44 +81,19 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     let cleanedTiles = new Set(), lastMilestone = 0, speedBoost = 0.28;
     const GRID_SIZE = 22;
 
-    // THE ULTIMATE CANADIAN CHIRP LIST
     const phrases = [
-        "Beauty!", 
-        "Give 'er!", 
-        "Out fer a rip!", 
-        "Poutine power!", 
-        "Holy Dinah!", 
-        "Absolute weapon!", 
-        "Certified Beauty!", 
-        "Right on, bud!", 
-        "Keep your stick on the ice!",
-        "What a tilly!", 
-        "Wheel, snipe, celebrate!", 
-        "Top shelf where grandma keeps the cookies!",
-        "Full send!", 
-        "Don't be a hoser!", 
-        "Just a lick o' paint!", 
-        "Straight cheddar!", 
-        "Clap bombs, f**k moms!", 
-        "Ferda!", 
-        "Silky mitts!", 
-        "Great hustle!", 
-        "Real gully!",
-        "Double-double energy!",
-        "Heads up, puck's live!",
-        "Pucks in deep!",
-        "Game stick for you!",
-        "Absolute clinic!",
-        "Skate it off!",
-        "Breezers are looking sharp!",
-        "What a beaut!",
-        "Bardown or bust!",
-        "Doin' the Lord's work!",
-        "Cleanest ice in the county!",
-        "You're a legend, eh?",
-        "Harder than a frozen puck!",
-        "Look at the hands on this guy!"
+        "Beauty!", "Give 'er!", "Out fer a rip!", "Poutine power!", "Holy Dinah!", 
+        "Absolute weapon!", "Certified Beauty!", "Right on, bud!", "Keep your stick on the ice!",
+        "What a tilly!", "Wheel, snipe, celebrate!", "Top shelf where grandma keeps the cookies!",
+        "Full send!", "Don't be a hoser!", "Just a lick o' paint!", "Straight cheddar!", 
+        "Ferda!", "Silky mitts!", "Great hustle!", "Real gully!", "Double-double energy!",
+        "Heads up, puck's live!", "Pucks in deep!", "Game stick for you!", "Absolute clinic!",
+        "Skate it off!", "Breezers are looking sharp!", "What a beaut!", "Bardown or bust!",
+        "Doin' the Lord's work!", "Cleanest ice in the county!", "You're a legend, eh?",
+        "Harder than a frozen puck!", "Look at the hands on this guy!", "Tick-tack-toe!",
+        "Empty netter!", "Sauce it!", "Gordie Howe hat trick!", "Light the lamp!"
     ];
+
     function doVibrate(ms) {
         if (window.navigator && window.navigator.vibrate) { window.navigator.vibrate(ms); }
     }
@@ -145,7 +117,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         particles = this.add.particles(0, 0, 'flare', { speed: 20, scale: { start: 0.1, end: 0 }, blendMode: 'ADD', lifespan: 300, frequency: 10, emitting: false }).setDepth(1);
         
         document.getElementById('start-btn').onclick = () => {
-            gtag('event', 'game_start');
+            if(window.dataLayer) window.dataLayer.push({'event': 'game_start'});
             document.getElementById('start-screen').style.display = 'none';
             doVibrate(50);
             gameStarted = true;
@@ -174,7 +146,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         p.body.setCircle(150);
         p.setVelocity(vx, vy);
         particles.startFollow(p);
-        triggerChirp("🚨 SLAPSHOT! 🚨"); // RESTORED
+        triggerChirp("🚨 SLAPSHOT! 🚨");
         doVibrate(20);
     }
 
@@ -222,7 +194,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 timeLeft -= 0.04;
                 doVibrate(30);
             }
-            // SPONSOR LOGO LOGIC
             if (beaver.y < 400) document.getElementById('ad-popup').style.display = 'block';
             else document.getElementById('ad-popup').style.display = 'none';
         }
@@ -247,20 +218,19 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         doVibrate(200);
 
         if (scoreVal < 85) {
-            gtag('event', 'level_fail', { 'level': currentLevel, 'score': scoreVal });
+            if(window.dataLayer) window.dataLayer.push({'event': 'level_fail', 'level': currentLevel});
             document.getElementById('fail-stats').innerText = `You polished ${finalScoreStr} of the ice!`;
             document.getElementById('fail-screen').style.display = 'flex';
             return;
         }
         
-        // 100% SHOUT OUT & VICTORY LOGIC
         if (currentLevel === 3) { 
-            gtag('event', 'game_complete', { 'final_score': scoreVal });
+            if(window.dataLayer) window.dataLayer.push({'event': 'game_complete'});
             document.getElementById('victory-screen').style.display = 'flex'; 
             return; 
         }
         
-        gtag('event', 'level_clear', { 'level': currentLevel, 'score': scoreVal });
+        if(window.dataLayer) window.dataLayer.push({'event': 'level_clear', 'level': currentLevel});
         document.getElementById('level-intro').style.display = 'flex';
         const body = document.getElementById('intro-body');
         let bonus = (scoreVal >= 100) ? "<div style='color:#ffd700; border:2px dashed #ffd700; padding:10px; margin-bottom:15px;'>🇨🇦 HOLY DINAH! 100% CLEAN! 🇨🇦</div>" : "";
@@ -270,7 +240,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     function proceedToLevel() {
         document.getElementById('level-intro').style.display = 'none';
         currentLevel++; 
-        gtag('event', 'level_start', { 'level': currentLevel });
         lastMilestone = 0;
         timeLeft = (currentLevel === 2) ? 50 : 45;
         cleanedTiles.clear();
