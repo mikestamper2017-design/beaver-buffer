@@ -14,28 +14,30 @@
         #ad-popup { 
             position: absolute; top: 20%; background: rgba(255,255,255,0.95); padding: 15px; 
             border-radius: 15px; display: none; z-index: 50; border: 4px solid #ffd700;
-            box-shadow: 0 0 30px rgba(255,215,0,0.5); animation: pulse 1.5s infinite;
         }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
     </style>
 </head>
 <body>
 
-    <div id="ad-popup">
-        <span style="display:block; font-size:10px; color:#333; margin-bottom:5px;">SPONSORED BY</span>
-        <img src="sponsor-logo.png" style="height: 120px; width: auto; object-fit: contain;">
-    </div>
+    <div id="ad-popup"><img src="sponsor-logo.png" style="height: 120px;"></div>
 
     <div id="start-screen" class="overlay">
         <h1 style="color: #ffd700;">BEAVER BUFFER</h1>
-        <p>Grab your rake and give the pond a good scrape, bud!</p>
+        <p>Grab your rake and give the pond a scrape, bud!</p>
         <button onclick="startGame()">GIVE 'ER, EH?</button>
     </div>
 
     <div id="level-intro" class="overlay" style="display:none;">
         <h2 id="intro-title" style="color: #ffd700;">BEAUTY!</h2>
         <div id="intro-body" style="margin: 20px 0;"></div>
-        <button onclick="proceedToLevel()">LET'S GO!</button>
+        <button id="next-btn" onclick="proceedToLevel()">LET'S GO!</button>
+    </div>
+
+    <div id="victory-screen" class="overlay" style="display:none;">
+        <h1 style="color: #ffd700;">ICE LEGEND!</h1>
+        <p>The job is done, bud. Time for a celebratory syrup!</p>
+        <img src="reward.png" style="width: 80%; max-width: 400px; border-radius: 15px; margin: 15px 0;">
+        <button onclick="location.reload()">PLAY AGAIN</button>
     </div>
 
     <div id="ui-layer">
@@ -52,7 +54,7 @@
     };
 
     const game = new Phaser.Game(config);
-    let beaver, rt, currentMask, goose, puck, audioCtx;
+    let beaver, rt, currentMask, goose, pucks, audioCtx;
     let timeLeft = 30, gameStarted = false, currentLevel = 1;
     let cleanedTiles = new Set();
     const GRID_SIZE = 25;
@@ -60,7 +62,8 @@
     function preload() {
         this.load.image('pond', 'pond.jpg'); this.load.image('rink', 'rink.jpg'); this.load.image('arena', 'arena.jpg');
         this.load.image('beaver', 'beaver.png'); this.load.image('beaver-cart', 'beaver-cart.png'); this.load.image('beaver-pro', 'beaver-pro.png');
-        this.load.image('goose', 'goose.png'); this.load.image('puck', 'puck.png'); this.load.image('sponsor-logo', 'sponsor-logo.png');
+        this.load.image('goose', 'goose.png'); this.load.image('puck', 'puck.png'); this.load.image('reward', 'reward.png');
+        this.load.image('sponsor-logo', 'sponsor-logo.png');
     }
 
     function create() {
@@ -69,8 +72,9 @@
         rt.fill(0xcceeff, 0.9);
         currentMask = new Phaser.Geom.Ellipse(400, 520, 720, 460);
         beaver = this.physics.add.sprite(400, 520, 'beaver').setScale(0.25).setDepth(2);
-        goose = this.physics.add.sprite(-500, -500, 'goose').setScale(0.12); // SHRUNK
-        puck = this.physics.add.sprite(-500, -500, 'puck').setScale(0.12);
+        goose = this.physics.add.sprite(-500, -500, 'goose').setScale(0.12);
+        
+        pucks = this.physics.add.group();
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
 
@@ -106,7 +110,8 @@
             if (!cleanedTiles.has(tileId)) {
                 cleanedTiles.add(tileId);
                 rt.erase('beaver', beaver.x, beaver.y);
-                let progress = (cleanedTiles.size / 350) * 100;
+                let targetTiles = (currentLevel === 1) ? 350 : 450;
+                let progress = (cleanedTiles.size / targetTiles) * 100;
                 document.getElementById('score').innerText = `${Math.min(100, Math.floor(progress))}%`;
                 playCrunch();
                 if (window.navigator.vibrate) window.navigator.vibrate(8);
@@ -114,22 +119,21 @@
         }
 
         if (currentLevel === 2) {
-            this.physics.moveToObject(goose, beaver, 140);
-            if (Phaser.Geom.Intersects.RectangleToRectangle(beaver.getBounds(), goose.getBounds())) {
-                timeLeft -= 0.05; // Less punishing time loss
-                this.cameras.main.shake(100, 0.005);
-            }
+            this.physics.moveToObject(goose, beaver, 145);
+            if (Phaser.Geom.Intersects.RectangleToRectangle(beaver.getBounds(), goose.getBounds())) timeLeft -= 0.05;
             if (beaver.y < 400) document.getElementById('ad-popup').style.display = 'block';
             else document.getElementById('ad-popup').style.display = 'none';
         }
 
         if (currentLevel === 3) {
-            if (puck.x > 750 || puck.x < 50) puck.body.velocity.x *= -1;
-            if (puck.y > 750 || puck.y < 200) puck.body.velocity.y *= -1;
-            if (Phaser.Geom.Intersects.RectangleToRectangle(beaver.getBounds(), puck.getBounds())) {
-                timeLeft -= 0.2;
-                this.cameras.main.shake(100, 0.01);
-            }
+            pucks.children.iterate(p => {
+                if (p.x > 770 || p.x < 30) p.body.velocity.x *= -1;
+                if (p.y > 770 || p.y < 200) p.body.velocity.y *= -1;
+                if (Phaser.Geom.Intersects.RectangleToRectangle(beaver.getBounds(), p.getBounds())) {
+                    timeLeft -= 0.15;
+                    this.cameras.main.shake(100, 0.01);
+                }
+            });
         }
         if (timeLeft <= 0) handleEnd();
     }
@@ -137,20 +141,23 @@
     function handleEnd() {
         gameStarted = false;
         let score = parseInt(document.getElementById('score').innerText);
-        if (score < 85) { alert("Try again, bud! Need 85%."); location.reload(); return; }
+        if (score < 85) { alert("Not enough polish! Try again, bud."); location.reload(); return; }
+        
+        if (currentLevel === 3) {
+            document.getElementById('victory-screen').style.display = 'flex';
+            return;
+        }
+
         document.getElementById('level-intro').style.display = 'flex';
         const body = document.getElementById('intro-body');
-        if (currentLevel === 1) body.innerHTML = "You're at the Local Rink. Watch for the <b>Cobra Chicken</b>! He's a real hoser.";
-        else if (currentLevel === 2) {
-            document.getElementById('ad-popup').style.display = 'none';
-            body.innerHTML = "Welcome to the Big Leagues! Watch for <b>flying pucks</b> and drive that Lawn-Zamboni like a pro!";
-        } else { body.innerHTML = "<b>ICE LEGEND!</b><br>Enjoy the poutine, bud."; }
+        if (currentLevel === 1) body.innerHTML = "Local Rink time! Watch for the <b>Cobra Chicken</b>!";
+        else body.innerHTML = "Big Leagues! Drive that <b>Lawn-Zamboni</b> and dodge the pucks!";
     }
 
     function proceedToLevel() {
         document.getElementById('level-intro').style.display = 'none';
         currentLevel++; 
-        timeLeft = (currentLevel === 2) ? 45 : 35; // MORE TIME FOR LEVEL 2
+        timeLeft = (currentLevel === 2) ? 45 : 40;
         cleanedTiles.clear();
         rt.clear(); rt.fill(0xcceeff, 0.9);
         document.getElementById('score').innerText = "0%";
@@ -160,10 +167,14 @@
             currentMask = new Phaser.Geom.Rectangle(80, 240, 640, 480);
             goose.setPosition(100, 300);
         } else if (currentLevel === 3) {
-            scene.bg.setTexture('arena'); beaver.setTexture('beaver-pro').setScale(0.4);
+            scene.bg.setTexture('arena'); 
+            beaver.setTexture('beaver-pro').setScale(0.22); // SHRINKING BUCK
             currentMask = new Phaser.Geom.Rectangle(40, 180, 720, 580);
             goose.setPosition(-900, -900);
-            puck.setPosition(400, 400).setVelocity(400, 400).setBounce(1);
+            for(let i=0; i<3; i++) { // TRIPLE PUCKS
+                let p = pucks.create(200 + (i*200), 400, 'puck').setScale(0.12).setBounce(1);
+                p.setVelocity(300 + (i*50), 300 - (i*50));
+            }
         }
         gameStarted = true;
     }
