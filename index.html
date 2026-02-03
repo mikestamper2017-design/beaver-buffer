@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Beaver Buffer: Pro Edition</title>
+    <title>Beaver Buffer: The Treenis Edition</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
         body { margin: 0; background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: 'Arial Black', sans-serif; }
@@ -25,7 +25,7 @@
 
     <div id="start-screen" class="overlay">
         <h1 style="color: #ffd700; font-size: 40px; margin:0;">BEAVER BUFFER</h1>
-        <p>Clear 85% of the ice to advance, bud!</p>
+        <p>Clear 85% of the ice. Give 'er, bud!</p>
         <button onclick="startGame()">GIVE 'ER, EH?</button>
     </div>
 
@@ -63,10 +63,10 @@
     };
 
     const game = new Phaser.Game(config);
-    let beaver, rt, currentMask, goose, pucks, audioCtx, particles;
+    let beaver, rt, currentMask, goose, pucks, particles, puckSpawner;
     let timeLeft = 30, gameStarted = false, currentLevel = 1;
-    let cleanedTiles = new Set(), lastMilestone = 0, speedBoost = 0.28; // Slightly faster base speed
-    const GRID_SIZE = 22; // Smaller grid = easier to hit tiles
+    let cleanedTiles = new Set(), lastMilestone = 0, speedBoost = 0.28;
+    const GRID_SIZE = 22;
 
     const phrases = ["Just a lick o' paint!", "Keep your stick on the ice!", "Right on, bud!", "Beauty!", "Give 'er!", "Out fer a rip!", "Poutine power!", "Full send!", "Holy Dinah!", "Absolute weapon!", "Doin' the Lord's work!", "Certified Beauty!"];
 
@@ -87,7 +87,6 @@
         goose = this.physics.add.sprite(-500, -500, 'goose').setScale(0.12);
         pucks = this.physics.add.group();
         particles = this.add.particles(0, 0, 'flare', { speed: 20, scale: { start: 0.1, end: 0 }, blendMode: 'ADD', lifespan: 300, frequency: 10, emitting: false }).setDepth(1);
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
 
     function triggerChirp(customText) {
@@ -98,21 +97,22 @@
         setTimeout(() => display.classList.remove('show-chirp'), duration);
     }
 
-    function playCrunch() {
-        if (!audioCtx) return;
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.frequency.setValueAtTime(110, audioCtx.currentTime);
-        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-        osc.connect(gain); gain.connect(audioCtx.destination);
-        osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+    function spawnPuck() {
+        if (currentLevel !== 3 || !gameStarted) return;
+        const side = Phaser.Math.Between(0, 3);
+        let x, y, vx, vy;
+        if (side === 0) { x = 400; y = 150; vx = Phaser.Math.Between(-200, 200); vy = 350; }
+        else if (side === 1) { x = 750; y = 400; vx = -350; vy = Phaser.Math.Between(-200, 200); }
+        else if (side === 2) { x = 400; y = 750; vx = Phaser.Math.Between(-200, 200); vy = -350; }
+        else { x = 50; y = 400; vx = 350; vy = Phaser.Math.Between(-200, 200); }
+        let p = pucks.create(x, y, 'puck').setScale(0.12).setBounce(1).setCollideWorldBounds(true);
+        p.setVelocity(vx, vy);
+        particles.startFollow(p);
+        triggerChirp("🚨 HEADS UP! 🚨");
     }
 
     function startGame() {
         document.getElementById('start-screen').style.display = 'none';
-        if (audioCtx.state === 'suspended') audioCtx.resume();
         gameStarted = true;
     }
 
@@ -135,28 +135,28 @@
                 let pct = Math.floor((cleanedTiles.size/target)*100);
                 document.getElementById('score').innerText = `${Math.min(100, pct)}%`;
                 
+                // Reinforce Vibration
+                if (window.navigator && window.navigator.vibrate) window.navigator.vibrate(12);
+
                 if (pct >= lastMilestone + 10 && pct <= 100) {
                     lastMilestone = Math.floor(pct / 10) * 10;
                     if(currentLevel === 2 && pct === 50) {
-                        triggerChirp("🍟 POUTINE POWER! SPEED BOOST! 🍟");
+                        triggerChirp("🍟 POUTINE POWER! 🍟");
                         speedBoost = 0.55; beaver.setTint(0x00ff00);
-                        setTimeout(() => { speedBoost = 0.28; beaver.clearTint(); }, 6000); // 6 Sec Boost!
+                        setTimeout(() => { speedBoost = 0.28; beaver.clearTint(); }, 6000);
                     } else if (currentLevel === 2 && pct === 80) {
-                        triggerChirp("🏒 SECOND WIND! GIVE 'ER! 🏒");
+                        triggerChirp("🏒 SECOND WIND! 🏒");
                         speedBoost = 0.48; beaver.setTint(0xffff00);
                         setTimeout(() => { speedBoost = 0.28; beaver.clearTint(); }, 4000);
                     } else { triggerChirp(); }
                 }
-                playCrunch();
-                if (window.navigator && window.navigator.vibrate) window.navigator.vibrate(12);
             }
         }
 
         if (currentLevel === 2) {
-            // Slightly reduced goose tracking speed (135 instead of 145)
             this.physics.moveToObject(goose, beaver, 135);
             if (Phaser.Geom.Intersects.RectangleToRectangle(beaver.getBounds(), goose.getBounds())) {
-                timeLeft -= 0.04; // Reduced time penalty per hit
+                timeLeft -= 0.04;
                 if (window.navigator.vibrate) window.navigator.vibrate(40);
             }
             if (beaver.y < 400) document.getElementById('ad-popup').style.display = 'block';
@@ -165,11 +165,10 @@
 
         if (currentLevel === 3) {
             pucks.children.iterate(p => {
-                if (p.x > 770 || p.x < 30) p.body.velocity.x *= -1;
-                if (p.y > 770 || p.y < 200) p.body.velocity.y *= -1;
                 if (Phaser.Geom.Intersects.RectangleToRectangle(beaver.getBounds(), p.getBounds())) {
-                    timeLeft -= 0.12; 
+                    timeLeft -= 0.15;
                     this.cameras.main.shake(80, 0.008);
+                    if (window.navigator.vibrate) window.navigator.vibrate([30, 30, 30]);
                 }
             });
         }
@@ -178,6 +177,7 @@
 
     function handleEnd() {
         gameStarted = false;
+        if (puckSpawner) puckSpawner.remove();
         let finalScore = document.getElementById('score').innerText;
         let scoreVal = parseInt(finalScore);
         if (scoreVal < 85) {
@@ -195,7 +195,7 @@
     function proceedToLevel() {
         document.getElementById('level-intro').style.display = 'none';
         currentLevel++; lastMilestone = 0;
-        timeLeft = (currentLevel === 2) ? 50 : 45; // 5 extra seconds for Level 2
+        timeLeft = (currentLevel === 2) ? 50 : 45;
         cleanedTiles.clear();
         rt.clear(); rt.fill(0xcceeff, 0.9);
         document.getElementById('score').innerText = "0%";
@@ -208,12 +208,10 @@
             scene.bg.setTexture('arena'); beaver.setTexture('beaver-pro').setScale(0.22);
             currentMask = new Phaser.Geom.Rectangle(40, 180, 720, 580);
             goose.setPosition(-900, -900);
+            pucks.clear(true, true);
             particles.start();
-            for(let i=0; i<3; i++) {
-                let p = pucks.create(200 + (i*200), 400, 'puck').setScale(0.12).setBounce(1);
-                p.setVelocity(280 + (i*40), 280 - (i*40)); // Slightly slower pucks
-                particles.startFollow(p);
-            }
+            spawnPuck();
+            puckSpawner = scene.time.addEvent({ delay: 7000, callback: spawnPuck, callbackScope: scene, loop: true });
         }
         gameStarted = true;
     }
