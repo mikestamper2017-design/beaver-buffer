@@ -11,19 +11,10 @@
         .stat-label { font-size: 10px; display: block; color: #ffd700; text-transform: uppercase; }
         .overlay { position: absolute; width: 100%; height: 100%; background: rgba(0,31,63,0.95); z-index: 100; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; box-sizing: border-box; }
         button { padding: 15px 35px; font-size: 20px; font-weight: bold; cursor: pointer; border-radius: 50px; border: none; background: #ffd700; color: #001f3f; }
-        
-        /* Enlarged Sponsor Logo Styling */
         #ad-popup { 
-            position: absolute; 
-            top: 20%; 
-            background: rgba(255,255,255,0.95); 
-            padding: 15px; 
-            border-radius: 15px; 
-            display: none; 
-            z-index: 50; 
-            border: 4px solid #ffd700;
-            box-shadow: 0 0 30px rgba(255,215,0,0.5);
-            animation: pulse 1.5s infinite;
+            position: absolute; top: 20%; background: rgba(255,255,255,0.95); padding: 15px; 
+            border-radius: 15px; display: none; z-index: 50; border: 4px solid #ffd700;
+            box-shadow: 0 0 30px rgba(255,215,0,0.5); animation: pulse 1.5s infinite;
         }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
     </style>
@@ -54,10 +45,9 @@
 
 <script>
     const config = {
-        type: Phaser.AUTO,
-        width: 800, height: 800,
+        type: Phaser.AUTO, width: 800, height: 800,
         scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-        physics: { default: 'arcade', arcade: { debug: false } },
+        physics: { default: 'arcade' },
         scene: { preload, create, update }
     };
 
@@ -70,21 +60,17 @@
     function preload() {
         this.load.image('pond', 'pond.jpg'); this.load.image('rink', 'rink.jpg'); this.load.image('arena', 'arena.jpg');
         this.load.image('beaver', 'beaver.png'); this.load.image('beaver-cart', 'beaver-cart.png'); this.load.image('beaver-pro', 'beaver-pro.png');
-        this.load.image('goose', 'goose.png'); this.load.image('puck', 'puck.png');
-        this.load.image('sponsor-logo', 'sponsor-logo.png');
+        this.load.image('goose', 'goose.png'); this.load.image('puck', 'puck.png'); this.load.image('sponsor-logo', 'sponsor-logo.png');
     }
 
     function create() {
         this.bg = this.add.image(400, 400, 'pond').setDisplaySize(800, 800);
         rt = this.make.renderTexture({ width: 800, height: 800 }, false);
         rt.fill(0xcceeff, 0.9);
-        
-        currentMask = new Phaser.Geom.Ellipse(400, 520, 720, 460); // Hugs pond edge
-        
+        currentMask = new Phaser.Geom.Ellipse(400, 520, 720, 460);
         beaver = this.physics.add.sprite(400, 520, 'beaver').setScale(0.25).setDepth(2);
-        goose = this.physics.add.sprite(-500, -500, 'goose').setScale(0.22);
+        goose = this.physics.add.sprite(-500, -500, 'goose').setScale(0.12); // SHRUNK
         puck = this.physics.add.sprite(-500, -500, 'puck').setScale(0.12);
-
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
 
@@ -114,34 +100,29 @@
         if (pointer.isDown && currentMask.contains(pointer.x, pointer.y)) {
             beaver.x = Phaser.Math.Linear(beaver.x, pointer.x, 0.25);
             beaver.y = Phaser.Math.Linear(beaver.y, pointer.y, 0.25);
-
             let tx = Math.floor(beaver.x / GRID_SIZE);
             let ty = Math.floor(beaver.y / GRID_SIZE);
             let tileId = `${tx}_${ty}`;
-            
             if (!cleanedTiles.has(tileId)) {
                 cleanedTiles.add(tileId);
                 rt.erase('beaver', beaver.x, beaver.y);
-                let progress = (cleanedTiles.size / 350) * 100; // Calibrated for easier Lvl 1
+                let progress = (cleanedTiles.size / 350) * 100;
                 document.getElementById('score').innerText = `${Math.min(100, Math.floor(progress))}%`;
                 playCrunch();
                 if (window.navigator.vibrate) window.navigator.vibrate(8);
             }
         }
 
-        // LEVEL 2 MOVEMENT: Cobra Turkey Chases Buck
         if (currentLevel === 2) {
-            this.physics.moveToObject(goose, beaver, 150);
+            this.physics.moveToObject(goose, beaver, 140);
             if (Phaser.Geom.Intersects.RectangleToRectangle(beaver.getBounds(), goose.getBounds())) {
-                timeLeft -= 0.1;
+                timeLeft -= 0.05; // Less punishing time loss
                 this.cameras.main.shake(100, 0.005);
             }
-            // Larger Treenis Ad Trigger
             if (beaver.y < 400) document.getElementById('ad-popup').style.display = 'block';
             else document.getElementById('ad-popup').style.display = 'none';
         }
 
-        // LEVEL 3 MOVEMENT: Bouncing Puck
         if (currentLevel === 3) {
             if (puck.x > 750 || puck.x < 50) puck.body.velocity.x *= -1;
             if (puck.y > 750 || puck.y < 200) puck.body.velocity.y *= -1;
@@ -150,42 +131,38 @@
                 this.cameras.main.shake(100, 0.01);
             }
         }
-
         if (timeLeft <= 0) handleEnd();
     }
 
     function handleEnd() {
         gameStarted = false;
         let score = parseInt(document.getElementById('score').innerText);
-        if (score < 85) { alert("Give 'er another go, bud! Need 85%."); location.reload(); return; }
-        
+        if (score < 85) { alert("Try again, bud! Need 85%."); location.reload(); return; }
         document.getElementById('level-intro').style.display = 'flex';
         const body = document.getElementById('intro-body');
-        
-        if (currentLevel === 1) body.innerHTML = "You're at the Local Rink. Watch for the <b>Cobra Turkey</b>! He's a real hoser.";
+        if (currentLevel === 1) body.innerHTML = "You're at the Local Rink. Watch for the <b>Cobra Chicken</b>! He's a real hoser.";
         else if (currentLevel === 2) {
             document.getElementById('ad-popup').style.display = 'none';
             body.innerHTML = "Welcome to the Big Leagues! Watch for <b>flying pucks</b> and drive that Lawn-Zamboni like a pro!";
-        } else { body.innerHTML = "<b>ICE LEGEND!</b><br>You earned that poutine, bud."; }
+        } else { body.innerHTML = "<b>ICE LEGEND!</b><br>Enjoy the poutine, bud."; }
     }
 
     function proceedToLevel() {
         document.getElementById('level-intro').style.display = 'none';
-        currentLevel++; timeLeft = 35; cleanedTiles.clear();
+        currentLevel++; 
+        timeLeft = (currentLevel === 2) ? 45 : 35; // MORE TIME FOR LEVEL 2
+        cleanedTiles.clear();
         rt.clear(); rt.fill(0xcceeff, 0.9);
         document.getElementById('score').innerText = "0%";
-
         const scene = game.scene.scenes[0];
         if (currentLevel === 2) {
-            scene.bg.setTexture('rink');
-            beaver.setTexture('beaver-cart').setScale(0.3);
-            currentMask = new Phaser.Geom.Rectangle(80, 240, 640, 480); // Rink surface
+            scene.bg.setTexture('rink'); beaver.setTexture('beaver-cart').setScale(0.3);
+            currentMask = new Phaser.Geom.Rectangle(80, 240, 640, 480);
             goose.setPosition(100, 300);
         } else if (currentLevel === 3) {
-            scene.bg.setTexture('arena');
-            beaver.setTexture('beaver-pro').setScale(0.4);
-            currentMask = new Phaser.Geom.Rectangle(40, 180, 720, 580); // Arena surface
-            goose.setPosition(-900, -900); // Remove goose
+            scene.bg.setTexture('arena'); beaver.setTexture('beaver-pro').setScale(0.4);
+            currentMask = new Phaser.Geom.Rectangle(40, 180, 720, 580);
+            goose.setPosition(-900, -900);
             puck.setPosition(400, 400).setVelocity(400, 400).setBounce(1);
         }
         gameStarted = true;
